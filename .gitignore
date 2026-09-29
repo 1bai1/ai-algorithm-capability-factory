@@ -1,0 +1,24 @@
+# Secrets and local-only directories
+key/
+ans/
+doc/
+run/
+*.env
+.env
+
+# Archives and installed/build artifacts
+*.zip
+**/node_modules/
+**/dist/
+**/.artifacts/
+**/*.log
+**/*.tsbuildinfo
+
+# Runtime and editor files
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/*.tmp
+**/reports/runtime/
+.vscode/
+.idea/
