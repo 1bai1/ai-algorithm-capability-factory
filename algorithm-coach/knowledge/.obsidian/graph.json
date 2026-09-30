@@ -1,22 +1,55 @@
 {
-  "collapse-filter": true,
-  "search": "",
+  "collapse-filter": false,
+  "search": "-path:\"提炼池\" -path:\"原始池\" -path:\"任务池\"",
   "showTags": false,
   "showAttachments": false,
   "hideUnresolved": false,
   "showOrphans": true,
-  "collapse-color-groups": true,
-  "colorGroups": [],
-  "collapse-display": true,
-  "showArrow": false,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "path:\"复用池/01_数据获取与处理\"",
+      "color": { "a": 1, "rgb": 3715756 }
+    },
+    {
+      "query": "path:\"复用池/02_高级特征工程\"",
+      "color": { "a": 1, "rgb": 5020384 }
+    },
+    {
+      "query": "path:\"复用池/03_预测模型\"",
+      "color": { "a": 1, "rgb": 5992416 }
+    },
+    {
+      "query": "path:\"复用池/04_交易策略\"",
+      "color": { "a": 1, "rgb": 9133280 }
+    },
+    {
+      "query": "path:\"复用池/05_回测系统与风险评估\"",
+      "color": { "a": 1, "rgb": 12606688 }
+    },
+    {
+      "query": "path:\"复用池/06_失败经验\"",
+      "color": { "a": 1, "rgb": 15026253 }
+    },
+    {
+      "query": "path:\"复用池/07_验证证据\"",
+      "color": { "a": 1, "rgb": 15250237 }
+    },
+    {
+      "query": "file:\"知识库索引\"",
+      "color": { "a": 1, "rgb": 15263976 }
+    }
+  ],
+  "collapse-display": false,
+  "showArrow": true,
   "textFadeMultiplier": 0,
-  "nodeSizeMultiplier": 1,
+  "nodeSizeMultiplier": 1.2,
   "lineSizeMultiplier": 1,
   "collapse-forces": true,
   "centerStrength": 0.518713248970312,
   "repelStrength": 10,
   "linkStrength": 1,
   "linkDistance": 250,
-  "scale": 0.9999999999999969,
+  "scale": 1,
   "close": false
 }
