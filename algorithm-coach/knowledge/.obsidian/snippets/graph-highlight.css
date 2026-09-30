@@ -1,0 +1,20 @@
+/* 图谱「选中态」专用色。
+ *
+ * Obsidian 把选中节点的填充与连线固定渲染为主题强调色，且优先级写在颜色组之前
+ * （源码 getFillColor() 第一步就 return colors.fillHighlight），设置里无法关闭。
+ * 默认强调色 HSL(258°, 88%, 66%) = #8A5CF5，与色板中
+ * 04_交易策略 的紫色 #8B5CE0（色相 261.4°）相差仅 3.3°，会造成
+ * 「选中任何节点都像变成了 04」的误解。
+ *
+ * 这里把选中态改成绿色 #4ADE80（色相 141.9°）。绿色未被任何类别占用
+ * （07_验证证据 用的是琥珀色，刻意避开绿以免被误读为「可信」），
+ * 因此绿色只表示「当前选中」。与色板最近颜色的感知色差 ΔE = 50.3，
+ * 远高于清晰可辨所需的 10。
+ */
+.graph-view.color-fill-highlight {
+  color: #4ADE80 !important;
+}
+
+.graph-view.color-line-highlight {
+  color: #4ADE80 !important;
+}
