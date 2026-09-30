@@ -50,9 +50,11 @@ FAILURE_SECTIONS = ["错误模式", "触发场景", "如何识别", "后果", "�
 EDGE_TYPES = ["上游依赖", "下游用途", "实证证据", "常见误用", "并列/替代"]
 
 # 边的目标必须是裸文件名：不含 `/`。
-# Obsidian 把带路径的 wikilink 按「相对当前文件所在目录」解析，而卡片本身就在
-# 复用池/<类>/ 下，链接路径再以复用池/<类>/ 开头就会拼出不存在的位置，
-# 导致链接解析失败、点击时在错位目录新建文件。裸文件名不含斜杠，不存在该歧义。
+# 卡片分散在 复用池/<类目>/ 下而边几乎全部跨类目，带路径的写法在 VS Code 的
+# Markdown Preview Enhanced 里会被按「相对当前笔记所在目录」解析（该扩展
+# wikiLinkResolution 的默认值 relative），从而指向不存在的位置：链接点不开，
+# Ctrl+点击还会在当前目录新建空文件。裸文件名在 MPE 的 shortest 模式与
+# Obsidian 下都能按名字命中。
 EDGE_RE = re.compile(
     r"^-\s*(?P<type>" + "|".join(EDGE_TYPES) + r")[：:]\s*"
     r"\[\[(?P<target>[^\]|/]+)\|(?P<display>[^\]]+)\]\]\s*"
@@ -304,7 +306,8 @@ def validate_edges(cards, rep: Report) -> Counter:
 
 
 def validate_stem_uniqueness(cards, knowledge_dir: str, rep: Report) -> None:
-    """边的目标是裸文件名，因此卡片文件名必须在整个 vault 内唯一，否则会指向歧义。"""
+    """边的目标是裸文件名，解析器按名字匹配，因此卡片文件名必须在整个工作区内
+    唯一（MPE 的 shortest 模式搜索工作区、Obsidian 搜索 vault），否则会指向歧义。"""
     if not os.path.isdir(knowledge_dir):
         return
     stems = {c["stem"]: key for key, c in cards.items()}
@@ -321,7 +324,7 @@ def validate_stem_uniqueness(cards, knowledge_dir: str, rep: Report) -> None:
             dup_path = os.path.relpath(os.path.join(root, fn), knowledge_dir)
             if dup_path.replace(os.sep, "/") != f"复用池/{owner}.md":
                 rep.error(cards[owner]["rel"], 0,
-                          f"卡片文件名在整个 vault 内不唯一，裸文件名链接会产生歧义: "
+                          f"卡片文件名在整个工作区内不唯一，裸文件名链接会产生歧义: "
                           f"{stem} 同时存在于 {dup_path}")
 
 

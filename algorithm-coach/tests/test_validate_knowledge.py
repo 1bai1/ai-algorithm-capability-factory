@@ -97,7 +97,7 @@ def build_fixture(base: str) -> dict[str, str]:
         "name 重复":
             "name 重复",
         "卡片文件名全库不唯一":
-            "卡片文件名在整个 vault 内不唯一",
+            "卡片文件名在整个工作区内不唯一",
     }
 
     put(c1, "缺字段.md", make_card(category="01_数据获取与处理").replace("status: 已验证\n", ""))
