@@ -2,7 +2,6 @@ __pycache__/
 *.py[cod]
 .venv/
 *.tmp
-reports/runtime/
 
 # Obsidian：保留插件与外观配置，忽略个人界面状态
 knowledge/.obsidian/workspace.json

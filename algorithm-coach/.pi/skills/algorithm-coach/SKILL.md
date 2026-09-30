@@ -19,19 +19,18 @@ For each user problem:
 1. Read the problem statement, then follow the retrieval protocol in `AGENTS.md`:
    start from `knowledge/知识库索引.md`, pick one to three capability cards, and read
    them in full. Check each card's `status` and "不适用条件" before relying on it.
-   Also check `memory/experiences/` for prior failures.
 2. Write a short implementation plan before creating the solution.
-3. Generate a runnable Python solution under `solutions/` with the interface
-   required by the task.
+3. Generate a runnable Python solution under the current task directory,
+   `knowledge/任务池/<日期>_<标的>_<任务名>/generated/`.
 4. Run the project harness from `harness/` using the PowerShell tool. Do not
    claim success without an actual validation result.
 5. Classify failures as syntax error, runtime error, timeout, wrong answer, or
    interface violation. Repair the solution using the concrete failure output.
 6. Perform at most three repair rounds for one task, recording each round.
-7. After a successful run, write a concise experience record under
-   `memory/experiences/` containing the pattern used, validation result, and
-   any failure that was fixed.
+7. Write the task's report and validation results into that same task directory.
+   If a cross-task lesson emerged, delegate it to the knowledge curator per
+   `AGENTS.md` instead of writing it by hand.
 
-Keep generated solutions and reports separate from the Pi source tree. Do not
+Keep generated solutions and reports out of the Pi source tree. Do not
 modify `D:\awork\akf\llmagent\code\pi-main` for ordinary algorithm tasks.
 

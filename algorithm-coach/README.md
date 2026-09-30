@@ -13,13 +13,14 @@ tools. Both directories are committed so a fresh clone includes the full runtime
 ## Directory layout
 
 ```text
-knowledge/                 Algorithm concepts and solution patterns
-memory/experiences/        Successful and failed validation records
-tasks/                     Problem statements and test cases
-solutions/                 Generated solution files
-reports/                   Unified validation reports
-harness/                   Isolated code execution and evaluation
+knowledge/                 Quantitative knowledge base and per-task outputs
+harness/                   Isolated execution and unified validation
+scripts/                   Knowledge base tooling (index generator, validator)
+tests/                     Tests for the tooling
+AGENTS.md                  Retrieval protocol, roles, and write boundaries
 .pi/skills/algorithm-coach Pi workflow instructions
+.pi/agents/                Subagent definitions
+.pi/extensions/            Pi extensions used by this project
 ```
 
 ## Intended workflow
