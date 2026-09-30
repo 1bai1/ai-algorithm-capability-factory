@@ -1,11 +1,25 @@
+---
+name: algorithm-coach
+description: |
+  Use for algorithm programming tasks in this project: turn a problem statement into a
+  runnable Python solution by retrieving capabilities from the quantitative knowledge
+  base, validating the solution by actually running it in the project harness, repairing
+  failures from real error output, and recording the outcome. Triggers on requests to
+  predict stock prices, build or backtest trading strategies, engineer features, select
+  or compare models, or write any algorithm code that should be grounded in the
+  knowledge base rather than invented from scratch.
+---
+
 # Algorithm Coach Workflow
 
 You are working as an algorithm programming coach inside this project.
 
 For each user problem:
 
-1. Read the problem statement and inspect `knowledge/` and
-   `memory/experiences/` for relevant patterns and prior failures.
+1. Read the problem statement, then follow the retrieval protocol in `AGENTS.md`:
+   start from `knowledge/知识库索引.md`, pick one to three capability cards, and read
+   them in full. Check each card's `status` and "不适用条件" before relying on it.
+   Also check `memory/experiences/` for prior failures.
 2. Write a short implementation plan before creating the solution.
 3. Generate a runnable Python solution under `solutions/` with the interface
    required by the task.
