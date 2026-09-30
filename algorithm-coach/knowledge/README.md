@@ -1,15 +1,29 @@
-# Knowledge Base
+# 量化算法能力知识库
 
-Store one algorithm capability or reusable solution pattern per Markdown file.
-Each entry should state:
+本目录是 Algorithm Coach 的行业知识库，也是一个可直接由 Obsidian 打开的 vault。
+知识库采用“原始池 -> 提炼池 -> 复用池 -> 任务池”的闭环结构，服务于量化股票预测算法的检索、生成、验证和沉淀。
 
-- input and output contract
-- applicable conditions
-- complexity
-- required Python environment
-- common failure modes
-- links to related entries
+## 目录分层
 
-Use stable tags such as `binary-search`, `two-pointers`, `dynamic-programming`,
-and `graph-traversal` so retrieval with `grep` remains predictable.
+- `原始池/`：未经整理的课程设计、论文、官方文档、代码和实验记录。
+- `提炼池/`：从原始池逐份筛选、提炼后的内容；目录结构与原始池保持一致，便于追溯。
+- `复用池/`：把提炼内容组织成 Agent 可直接检索、判断、生成和验证的量化能力结构。
+- `任务池/`：某一次具体股票预测任务的输入、生成代码、验证结果和报告。
+- `_索引与规范/`：知识类型、关系、字段和维护流程规范。
+- `_附件/`：数据快照、图表和模型文件等较大文件。
+
+## 使用原则
+
+1. 原始材料先进入 `原始池/`，不要直接当作已验证知识使用。
+2. 提炼池与原始池保持同构，只做筛选、摘要、结构化和来源标注，不改变材料归属。
+3. 复用池从提炼池中抽取可执行能力，用于模型选择、代码生成、验证和修复。
+4. 每次运行只写入 `任务池/` 的新任务目录，不覆盖历史结果。
+5. 验证成功或失败后，再将证据和经验回写到提炼池，并在复用池更新可执行能力。
+6. Markdown 是事实来源，Obsidian 负责浏览、反向链接和图谱展示。
+
+## Obsidian
+
+在 Obsidian 中打开本目录即可使用中文目录树、Wiki 链接和关系图谱。Agent 不依赖 Obsidian 客户端，直接读取 Markdown、frontmatter、标签和链接。
+
+入口：[[_索引与规范/知识库首页]]
 

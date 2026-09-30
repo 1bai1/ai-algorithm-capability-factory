@@ -4,3 +4,9 @@ __pycache__/
 *.tmp
 reports/runtime/
 
+# Obsidian：保留插件与外观配置，忽略个人界面状态
+knowledge/.obsidian/workspace.json
+
+# 付费课程原文，仅本地留存，不随仓库公开分发
+knowledge/原始池/线上博客/
+
