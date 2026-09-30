@@ -49,11 +49,17 @@ FAILURE_SECTIONS = ["错误模式", "触发场景", "如何识别", "后果", "�
 
 EDGE_TYPES = ["上游依赖", "下游用途", "实证证据", "常见误用", "并列/替代"]
 
+# 边的目标必须是裸文件名：不含 `/`。
+# Obsidian 把带路径的 wikilink 按「相对当前文件所在目录」解析，而卡片本身就在
+# 复用池/<类>/ 下，链接路径再以复用池/<类>/ 开头就会拼出不存在的位置，
+# 导致链接解析失败、点击时在错位目录新建文件。裸文件名不含斜杠，不存在该歧义。
 EDGE_RE = re.compile(
     r"^-\s*(?P<type>" + "|".join(EDGE_TYPES) + r")[：:]\s*"
-    r"\[\[(?P<path>[^\]|]+)\|(?P<display>[^\]]+)\]\]\s*"
+    r"\[\[(?P<target>[^\]|/]+)\|(?P<display>[^\]]+)\]\]\s*"
     r"——\s*(?P<reason>.+)$"
 )
+
+EDGE_FORMAT_HINT = "`- <边型>：[[<卡片文件名>|<显示名>]] —— <判断依据>`"
 
 ID_RE = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
 
@@ -254,7 +260,7 @@ def validate_sections(cards, rep: Report) -> None:
 
 
 def validate_edges(cards, rep: Report) -> Counter:
-    known = {f"复用池/{key}" for key in cards}
+    by_stem = {c["stem"]: c for c in cards.values()}
     type_counter = Counter()
     for key, c in cards.items():
         rel = c["rel"]
@@ -266,26 +272,24 @@ def validate_edges(cards, rep: Report) -> Counter:
                 continue
             m = EDGE_RE.match(line)
             if not m:
+                hint = ("边目标不能带路径，请写裸文件名" if "[[" in line and "/" in line.split("[[")[-1].split("|")[0]
+                        else "边格式不合规")
                 rep.error(rel, line_of(c["text"], line),
-                          f"边格式不合规（应为 `- <边型>：[[复用池/<类目>/<文件名>|<显示名>]] —— <依据>`）: {line[:60]}")
+                          f"{hint}（应为 {EDGE_FORMAT_HINT}）: {line[:60]}")
                 continue
             n_edges += 1
             type_counter[m.group("type")] += 1
 
-            target_path = m.group("path")
-            if not target_path.startswith("复用池/"):
-                rep.error(rel, line_of(c["text"], line),
-                          f"边的路径应以 `复用池/` 开头: {target_path}")
-                continue
-            if target_path == f"复用池/{key}":
+            target = m.group("target")
+            if target == c["stem"]:
                 rep.error(rel, line_of(c["text"], line), "不允许自链接")
                 continue
-            if target_path not in known:
+            tgt = by_stem.get(target)
+            if tgt is None:
                 rep.error(rel, line_of(c["text"], line),
-                          f"边的目标卡片不存在: {target_path}")
+                          f"边的目标卡片不存在: {target}")
                 continue
 
-            tgt = cards[target_path[len("复用池/"):]]
             tname = fm_field(tgt["fm"], "name")
             if tname and m.group("display") != tname:
                 rep.warn(rel, line_of(c["text"], line),
@@ -297,6 +301,28 @@ def validate_edges(cards, rep: Report) -> Counter:
         if n_edges and not (lo <= n_edges <= hi):
             rep.warn(rel, 0, f"出度 {n_edges} 超出实测区间 {lo}–{hi}")
     return type_counter
+
+
+def validate_stem_uniqueness(cards, knowledge_dir: str, rep: Report) -> None:
+    """边的目标是裸文件名，因此卡片文件名必须在整个 vault 内唯一，否则会指向歧义。"""
+    if not os.path.isdir(knowledge_dir):
+        return
+    stems = {c["stem"]: key for key, c in cards.items()}
+    for root, dirs, files in os.walk(knowledge_dir):
+        if ".obsidian" in root:
+            continue
+        for fn in files:
+            if not fn.endswith(".md"):
+                continue
+            stem = fn[:-3]
+            if stem not in stems:
+                continue
+            owner = stems[stem]
+            dup_path = os.path.relpath(os.path.join(root, fn), knowledge_dir)
+            if dup_path.replace(os.sep, "/") != f"复用池/{owner}.md":
+                rep.error(cards[owner]["rel"], 0,
+                          f"卡片文件名在整个 vault 内不唯一，裸文件名链接会产生歧义: "
+                          f"{stem} 同时存在于 {dup_path}")
 
 
 def main() -> int:
@@ -315,6 +341,7 @@ def main() -> int:
     check_uniqueness(cards, rep)
     validate_sources(cards, refine_dir, rep)
     validate_sections(cards, rep)
+    validate_stem_uniqueness(cards, os.path.join(root, "knowledge"), rep)
     type_counter = validate_edges(cards, rep)
 
     n_nodes = len(cards)

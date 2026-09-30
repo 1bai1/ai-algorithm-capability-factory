@@ -83,7 +83,7 @@ numpy（`np.log`）；pandas（`diff` / `dropna`）；statsmodels（`adfuller`�
 
 ## 相关能力
 
-- 下游用途：[[复用池/03_预测模型/自回归族时序预测（AR-MA-ARMA-ARIMA-SARIMA）|自回归族时序预测（AR-MA-ARMA-ARIMA-SARIMA）]] —— 对数/差分平稳化是 ARIMA 族定阶前的必要前置
-- 下游用途：[[复用池/03_预测模型/波动率模型ARCH与GARCH|波动率模型ARCH与GARCH]] —— 本卡产出的对数收益率序列（log(close).diff()*100）是 GARCH 的建模对象
-- 常见误用：[[复用池/06_失败经验/模型假设与适用边界失效|模型假设与适用边界失效]] —— 结构突变下 ADF 会把制度切换误判为随机趋势，导致"该差几阶"的判断出错
-- 实证证据：[[复用池/07_验证证据/IMF锌价_ARMA月度预测|IMF锌价_ARMA月度预测]] —— 对数+去趋势→ADF检验→ARMA 这条链在锌价月频上跑出的真实检验数值
+- 下游用途：[[自回归族时序预测（AR-MA-ARMA-ARIMA-SARIMA）|自回归族单变量时序预测（AR/MA/ARMA/ARIMA/SARIMA）]] —— 对数/差分平稳化是 ARIMA 族定阶前的必要前置
+- 下游用途：[[波动率模型ARCH与GARCH|波动率模型 ARCH 与 GARCH]] —— 本卡产出的对数收益率序列（log(close).diff()*100）是 GARCH 的建模对象
+- 常见误用：[[模型假设与适用边界失效|模型假设与适用边界失效]] —— 结构突变下 ADF 会把制度切换误判为随机趋势，导致"该差几阶"的判断出错
+- 实证证据：[[IMF锌价_ARMA月度预测|IMF锌价 × ARMA 月度预测]] —— 对数+去趋势→ADF检验→ARMA 这条链在锌价月频上跑出的真实检验数值

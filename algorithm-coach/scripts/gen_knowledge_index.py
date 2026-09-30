@@ -83,6 +83,7 @@ def collect(cards_dir: str):
                     "status": frontmatter_field(text, "status") or "未标注",
                     "desc": first_sentence(section(text, "能力说明")),
                     "path": f"复用池/{cat}/{fn[:-3]}",
+                    "stem": fn[:-3],
                     "edges": [
                         (m.group(1), m.group(2))
                         for m in (EDGE_RE.match(l.strip()) for l in section(text, "相关能力").split("\n"))
@@ -187,7 +188,9 @@ def build(cards) -> str:
         out.append("")
         for c in items:
             desc = f" — {c['desc']}" if c["desc"] else ""
-            out.append(f"- [[{c['path']}|{c['name']}]] `{c['status']}`{desc}")
+            # 用裸文件名做链接目标：带路径的 wikilink 会被 Obsidian 按相对当前文件
+            # 所在目录解析，拼出不存在的位置。
+            out.append(f"- [[{c['stem']}|{c['name']}]] `{c['status']}`{desc}")
         out.append("")
     return "\n".join(out)
 

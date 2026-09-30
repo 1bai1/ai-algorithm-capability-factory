@@ -6,7 +6,7 @@
 
 用法：
     python tests/test_validate_knowledge.py
-退出码 0 表示 14 类违规全部命中且退出码正确。
+退出码 0 表示 15 类违规全部命中且退出码正确。
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ CAPABILITY_SECTIONS = ["能力说明", "输入契约", "输出契约", "调用�
 
 def make_card(cid="model.demo.v1", name="示例能力卡", category="03_预测模型",
               status="已验证", sources=("提炼池/示例/来源.md",),
-              omit_section=None, edges=("- 上游依赖：[[复用池/01_数据获取与处理/正常卡|正常卡]] —— 示例依据",)):
+              omit_section=None, edges=("- 上游依赖：[[正常卡|正常卡]] —— 示例依据",)):
     """生成一张卡片；各违规用例在它基础上做单点破坏。"""
     secs = [s for s in CAPABILITY_SECTIONS if s != omit_section]
     body = [f"## {s}\n内容" for s in secs]
@@ -52,6 +52,8 @@ def build_fixture(base: str) -> dict[str, str]:
     ref_dir = os.path.join(base, "knowledge", "提炼池", "示例")
     os.makedirs(ref_dir, exist_ok=True)
     open(os.path.join(ref_dir, "来源.md"), "w", encoding="utf-8").write("占位来源\n")
+    # 与卡片同名的提炼池文件：用来验证「卡片文件名全库唯一」这条不变量
+    open(os.path.join(ref_dir, "正常卡.md"), "w", encoding="utf-8").write("占位同名文件\n")
 
     c1 = os.path.join(pool, "01_数据获取与处理")
     c6 = os.path.join(pool, "06_失败经验")
@@ -82,6 +84,8 @@ def build_fixture(base: str) -> dict[str, str]:
             "失败模式卡缺少章节 `## 错误模式`",
         "边格式不合规":
             "边格式不合规",
+        "边目标带路径":
+            "边目标不能带路径",
         "边的目标卡片不存在":
             "边的目标卡片不存在",
         "不允许自链接":
@@ -92,6 +96,8 @@ def build_fixture(base: str) -> dict[str, str]:
             "id 重复",
         "name 重复":
             "name 重复",
+        "卡片文件名全库不唯一":
+            "卡片文件名在整个 vault 内不唯一",
     }
 
     put(c1, "缺字段.md", make_card(category="01_数据获取与处理").replace("status: 已验证\n", ""))
@@ -105,11 +111,13 @@ def build_fixture(base: str) -> dict[str, str]:
     put(c1, "缺章节.md", make_card(category="01_数据获取与处理", omit_section="调用方式"))
     put(c6, "失败卡缺章.md", make_card(category="06_失败经验"))
     put(c1, "边格式错.md", make_card(category="01_数据获取与处理",
-                                  edges=("- 上游依赖：[[复用池/01_数据获取与处理/正常卡|正常卡]]",)))
+                                  edges=("- 上游依赖：[[正常卡|正常卡]]",)))
+    put(c1, "边目标带路径.md", make_card(category="01_数据获取与处理",
+                                    edges=("- 上游依赖：[[复用池/01_数据获取与处理/正常卡|正常卡]] —— 依据",)))
     put(c1, "边目标不存在.md", make_card(category="01_数据获取与处理",
-                                     edges=("- 上游依赖：[[复用池/09_不存在/幽灵卡|幽灵卡]] —— 依据",)))
+                                     edges=("- 上游依赖：[[幽灵卡|幽灵卡]] —— 依据",)))
     put(c1, "自链接.md", make_card(name="自链接", category="01_数据获取与处理",
-                                 edges=("- 上游依赖：[[复用池/01_数据获取与处理/自链接|自链接]] —— 依据",)))
+                                 edges=("- 上游依赖：[[自链接|自链接]] —— 依据",)))
     put(c1, "零边.md", make_card(category="01_数据获取与处理", edges=()))
     put(c1, "重复id.md", make_card(cid="data.normal.v1", name="另一个名字",
                                  category="01_数据获取与处理"))
