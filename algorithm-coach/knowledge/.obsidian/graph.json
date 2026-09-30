@@ -9,35 +9,59 @@
   "colorGroups": [
     {
       "query": "path:\"复用池/01_数据获取与处理\"",
-      "color": { "a": 1, "rgb": 3715756 }
+      "color": {
+        "a": 1,
+        "rgb": 3715756
+      }
     },
     {
       "query": "path:\"复用池/02_高级特征工程\"",
-      "color": { "a": 1, "rgb": 5020384 }
+      "color": {
+        "a": 1,
+        "rgb": 5020384
+      }
     },
     {
       "query": "path:\"复用池/03_预测模型\"",
-      "color": { "a": 1, "rgb": 5992416 }
+      "color": {
+        "a": 1,
+        "rgb": 5992416
+      }
     },
     {
       "query": "path:\"复用池/04_交易策略\"",
-      "color": { "a": 1, "rgb": 9133280 }
+      "color": {
+        "a": 1,
+        "rgb": 9133280
+      }
     },
     {
       "query": "path:\"复用池/05_回测系统与风险评估\"",
-      "color": { "a": 1, "rgb": 12606688 }
+      "color": {
+        "a": 1,
+        "rgb": 12606688
+      }
     },
     {
       "query": "path:\"复用池/06_失败经验\"",
-      "color": { "a": 1, "rgb": 15026253 }
+      "color": {
+        "a": 1,
+        "rgb": 15026253
+      }
     },
     {
       "query": "path:\"复用池/07_验证证据\"",
-      "color": { "a": 1, "rgb": 15250237 }
+      "color": {
+        "a": 1,
+        "rgb": 15250237
+      }
     },
     {
       "query": "file:\"知识库索引\"",
-      "color": { "a": 1, "rgb": 15263976 }
+      "color": {
+        "a": 1,
+        "rgb": 15263976
+      }
     }
   ],
   "collapse-display": false,
@@ -50,6 +74,6 @@
   "repelStrength": 10,
   "linkStrength": 1,
   "linkDistance": 250,
-  "scale": 1,
+  "scale": 0.9999999999999926,
   "close": false
 }
