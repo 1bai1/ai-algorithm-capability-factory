@@ -1,0 +1,383 @@
+{
+  "meta": {
+    "timestamp": "2026-10-01 19:29:45",
+    "harness_version": "0.1.0",
+    "python": "3.9.23",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "algo_dir": "knowledge\\任务池\\2026-10-01_601318_5日收益预测\\generated",
+    "data_path": "D:/awork/akf/llmagent/cankao/gupiao/计科3班20232131005魏煜桓金融数据分析与智能量化交易应用课程期末设计/code/data/601318.csv",
+    "data_rows": 966,
+    "data_start": "2022-01-04",
+    "data_end": "2025-12-26",
+    "cutoff": "2024-07-01",
+    "seed": 42,
+    "budget_seconds": 300.0,
+    "modules": [
+      "interface",
+      "correctness",
+      "performance",
+      "stability"
+    ],
+    "elapsed_seconds": 11.77,
+    "counters": {
+      "passed": 16,
+      "failed": 4,
+      "skipped": 0
+    },
+    "manifest": {
+      "symbol": "601318",
+      "label": {
+        "horizon": 5,
+        "type": "simple"
+      },
+      "seed": 42,
+      "budget_seconds": 300,
+      "cost_per_side": 0.0005
+    },
+    "train_rows": 541,
+    "train_start": "2022-04-07",
+    "train_end": "2024-06-28",
+    "test_rows": 365,
+    "test_start": "2024-07-01",
+    "test_end": "2025-12-26"
+  },
+  "modules": {
+    "interface": {
+      "title": "接口规范",
+      "passed": true,
+      "checks": [
+        {
+          "id": "interface.files",
+          "module": "interface",
+          "name": "提交物齐全",
+          "passed": true,
+          "detail": "algorithm.py 与 manifest.json 均在",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.manifest",
+          "module": "interface",
+          "name": "manifest 合法",
+          "passed": true,
+          "detail": "symbol=601318, label=simple h=5, seed=42, budget=300s",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.import",
+          "module": "interface",
+          "name": "模块可导入",
+          "passed": true,
+          "detail": "模块导入成功",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.functions",
+          "module": "interface",
+          "name": "契约函数齐全",
+          "passed": true,
+          "detail": "build_features / fit / predict 均已定义",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.signatures",
+          "module": "interface",
+          "name": "函数签名正确",
+          "passed": true,
+          "detail": "三个函数的参数个数符合契约",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.smoke",
+          "module": "interface",
+          "name": "冒烟运行",
+          "passed": true,
+          "detail": "150 行数据上 build_features→fit→predict 全通（训练 70 行，预测 15 行）",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        }
+      ]
+    },
+    "correctness": {
+      "title": "功能正确性",
+      "passed": false,
+      "checks": [
+        {
+          "id": "correctness.row_conservation",
+          "module": "correctness",
+          "name": "行数守恒",
+          "passed": true,
+          "detail": "966 行进 966 行出，date 列未改动",
+          "location": null,
+          "kb_card": null,
+          "elapsed": 0.4160022,
+          "status": "通过"
+        },
+        {
+          "id": "correctness.label_reconcile",
+          "module": "correctness",
+          "name": "标签口径对账",
+          "passed": true,
+          "detail": "961 个标签逐行一致（最大偏差 0.00e+00），口径 simple horizon=5",
+          "location": null,
+          "kb_card": "评价指标口径与量纲误用",
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "correctness.truncation",
+          "module": "correctness",
+          "name": "截断一致性（反前视）",
+          "passed": true,
+          "detail": "全量与前 676 行两次运行，21 列特征逐行一致（最大偏差 0.0e+00）",
+          "location": null,
+          "kb_card": "全样本统计量泄漏",
+          "elapsed": 0.4173218,
+          "status": "通过"
+        },
+        {
+          "id": "correctness.prediction_validity",
+          "module": "correctness",
+          "name": "预测输出有效性",
+          "passed": true,
+          "detail": "365 个预测全部有限，取值范围 [-0.03236, 0.0316]",
+          "location": null,
+          "kb_card": "预测输出有效性未校验",
+          "elapsed": 0.44139439999999996,
+          "status": "通过"
+        },
+        {
+          "id": "correctness.naive_baseline",
+          "module": "correctness",
+          "name": "朴素基线对比",
+          "passed": false,
+          "detail": "方向准确率 模型 0.458 / 全猜涨 0.578 / 明日=今日 0.483（样本 360 行）；低于最好基线 11.9 个百分点，预测力为负",
+          "location": null,
+          "kb_card": "缺朴素基线导致预测力误判",
+          "elapsed": null,
+          "status": "未通过"
+        }
+      ]
+    },
+    "performance": {
+      "title": "指标表现",
+      "passed": false,
+      "checks": [
+        {
+          "id": "performance.prediction_quality",
+          "module": "performance",
+          "name": "精度账（对标基线）",
+          "passed": false,
+          "detail": "RMSE 高于零预测基线；方向准确率低于最好基线 11.9 个百分点。RMSE 4.47%（零预测基线 4.18%）；方向准确率 0.458，基线 全猜涨 0.578 / 明日=今日 0.483；IC -0.097（样本 360 行）",
+          "location": null,
+          "kb_card": "缺朴素基线导致预测力误判",
+          "elapsed": null,
+          "status": "未通过"
+        },
+        {
+          "id": "performance.trading_vs_benchmark",
+          "module": "performance",
+          "name": "交易账（对标买入持有）",
+          "passed": false,
+          "detail": "累计收益未跑赢买入持有；夏普未跑赢买入持有。策略 累计 +22.94%、年化 +15.33%、夏普 0.82、最大回撤 -17.23%、胜率 0.459、盈亏比 2.01、年化换手 28、37 笔 ｜ 买入持有 累计 +72.46%、夏普 1.51、最大回撤 -21.33% ｜ 超额 -49.52%、夏普差 -0.69",
+          "location": null,
+          "kb_card": "回测无买入持有基准与风险指标",
+          "elapsed": null,
+          "status": "未通过"
+        },
+        {
+          "id": "performance.drawdown_constraint",
+          "module": "performance",
+          "name": "回撤约束（对标买入持有）",
+          "passed": true,
+          "detail": "策略最大回撤 -17.23%，买入持有 -21.33%，上限 -32.00%（基准的 1.5 倍）",
+          "location": null,
+          "kb_card": "回测无买入持有基准与风险指标",
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "performance.cost_sensitivity",
+          "module": "performance",
+          "name": "成本敏感度（×2 后仍胜基准）",
+          "passed": false,
+          "detail": "成本翻倍后累计收益 +20.51%已不敌买入持有。×1（单边 0.050%） +22.94%；×2（单边 0.100%） +20.51%；×3（单边 0.150%） +18.12% ｜ 买入持有 +72.46%",
+          "location": null,
+          "kb_card": "回测无交易成本与滑点",
+          "elapsed": null,
+          "status": "未通过"
+        },
+        {
+          "id": "performance.overfit_gap",
+          "module": "performance",
+          "name": "样本内外差距披露",
+          "passed": true,
+          "detail": "方向准确率 样本内 0.597 / 样本外 0.458，差 +13.9 个百分点（上限 15）；RMSE 样本内 3.70% / 样本外 4.47%",
+          "location": null,
+          "kb_card": "无独立验证集与样本外评估",
+          "elapsed": null,
+          "status": "通过"
+        }
+      ]
+    },
+    "stability": {
+      "title": "运行稳定性",
+      "passed": true,
+      "checks": [
+        {
+          "id": "stability.timeout",
+          "module": "stability",
+          "name": "时间预算",
+          "passed": true,
+          "detail": "fit/predict 0.4s / 预算 300s；build_features 0.4s",
+          "location": null,
+          "kb_card": null,
+          "elapsed": 0.44139439999999996,
+          "status": "通过"
+        },
+        {
+          "id": "stability.determinism",
+          "module": "stability",
+          "name": "确定性（同种子可复现）",
+          "passed": true,
+          "detail": "同种子两次运行 365 个预测完全一致（各 0.4s / 0.4s）",
+          "location": null,
+          "kb_card": "过拟合与结果不稳定",
+          "elapsed": 0.8221421000000001,
+          "status": "通过"
+        },
+        {
+          "id": "stability.small_sample",
+          "module": "stability",
+          "name": "小样本不崩",
+          "passed": true,
+          "detail": "150 行数据 全链路跑通（训练 45 行，预测 45 行）",
+          "location": null,
+          "kb_card": null,
+          "elapsed": 0.8467096000000001,
+          "status": "通过"
+        },
+        {
+          "id": "stability.bad_data",
+          "module": "stability",
+          "name": "坏数据不崩",
+          "passed": true,
+          "detail": "注入缺失值并删除若干行后 全链路跑通（训练 216 行，预测 193 行）",
+          "location": null,
+          "kb_card": null,
+          "elapsed": 0.8234949,
+          "status": "通过"
+        }
+      ]
+    }
+  },
+  "metrics": {
+    "setup": {
+      "horizon": 5,
+      "cost_per_side": 0.0005,
+      "window_start": 601,
+      "rule": "预测 > 训练段预测中位数 → 次日建仓，持有 horizon 天，非重叠",
+      "threshold": -0.0004697462247912992
+    },
+    "prediction": {
+      "rows": 360,
+      "rmse": 0.044655397381398516,
+      "rmse_zero_baseline": 0.0417617785180661,
+      "direction_accuracy": 0.4583333333333333,
+      "baseline_up": 0.5777777777777777,
+      "baseline_persistence": 0.48333333333333334,
+      "ic": -0.09730605542905801
+    },
+    "trading": {
+      "cum_return": 0.22941632569117032,
+      "annual_return": 0.15326511679971788,
+      "annual_vol": 0.1962686327686914,
+      "sharpe": 0.8225965443476363,
+      "max_drawdown": -0.17231110272264893,
+      "days": 365,
+      "years": 1.4484126984126984,
+      "trades": 37,
+      "win_rate": 0.4594594594594595,
+      "profit_loss_ratio": 2.0133177186626687,
+      "avg_win": 0.03832636079386019,
+      "avg_loss": 0.019036419556928245,
+      "turnover_annual": 27.616438356164384
+    },
+    "benchmark": {
+      "buy_hold": {
+        "cum_return": 0.7246126862085535,
+        "gross_return": 0.7256126862085535,
+        "annual_return": 0.4568487251204929,
+        "annual_vol": 0.2748666253733931,
+        "sharpe": 1.5112732134060063,
+        "max_drawdown": -0.21334845294022353,
+        "days": 365
+      },
+      "excess_return": -0.49519636051738314,
+      "sharpe_diff": -0.68867666905837
+    },
+    "robustness": {
+      "cost_scan": [
+        {
+          "multiplier": 1.0,
+          "cost_per_side": 0.0005,
+          "cum_return": 0.22941632569117032,
+          "sharpe": 0.8225965443476363,
+          "max_drawdown": -0.17231110272264893
+        },
+        {
+          "multiplier": 2.0,
+          "cost_per_side": 0.001,
+          "cum_return": 0.20508615327601865,
+          "sharpe": 0.7522725283598596,
+          "max_drawdown": -0.18057406480498606
+        },
+        {
+          "multiplier": 3.0,
+          "cost_per_side": 0.0015,
+          "cum_return": 0.18122566914792704,
+          "sharpe": 0.6818338492813675,
+          "max_drawdown": -0.18875862206236949
+        }
+      ],
+      "in_sample": {
+        "direction_accuracy": 0.5970425138632163,
+        "rmse": 0.03695950680514351
+      },
+      "out_of_sample": {
+        "direction_accuracy": 0.4583333333333333,
+        "rmse": 0.044655397381398516
+      },
+      "gap": {
+        "direction_accuracy": 0.13870918052988296,
+        "rmse": -0.007695890576255006
+      }
+    }
+  },
+  "conclusion": {
+    "passed": false,
+    "failed": [
+      "correctness.naive_baseline",
+      "performance.prediction_quality",
+      "performance.trading_vs_benchmark",
+      "performance.cost_sensitivity"
+    ],
+    "skipped": []
+  }
+}
