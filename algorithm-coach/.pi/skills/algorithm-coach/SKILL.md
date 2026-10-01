@@ -2,12 +2,13 @@
 name: algorithm-coach
 description: |
   Use for algorithm programming tasks in this project: turn a problem statement into a
-  runnable Python solution by retrieving capabilities from the quantitative knowledge
-  base, validating the solution by actually running it in the project harness, repairing
-  failures from real error output, and recording the outcome. Triggers on requests to
-  predict stock prices, build or backtest trading strategies, engineer features, select
-  or compare models, or write any algorithm code that should be grounded in the
-  knowledge base rather than invented from scratch.
+  runnable Python solution by retrieving capabilities from the industry knowledge base
+  (currently a text-classification knowledge base), validating the solution by actually
+  running it in the project harness, repairing failures from real error output, and
+  recording the outcome. Triggers on requests to build, compare or evaluate
+  classification / prediction algorithms, engineer features, select models, or write any
+  algorithm code that should be grounded in the knowledge base rather than invented from
+  scratch.
 ---
 
 # Algorithm Coach Workflow
@@ -21,7 +22,7 @@ For each user problem:
    them in full. Check each card's `status` and "不适用条件" before relying on it.
 2. Write a short implementation plan before creating the solution.
 3. Generate a runnable Python solution under the current task directory,
-   `knowledge/任务池/<日期>_<标的>_<任务名>/generated/`.
+   `knowledge/任务池/<日期>_<对象>_<任务名>/generated/`.
 4. Run the project harness from `harness/` using the PowerShell tool. Do not
    claim success without an actual validation result.
 5. Classify failures as syntax error, runtime error, timeout, wrong answer, or
