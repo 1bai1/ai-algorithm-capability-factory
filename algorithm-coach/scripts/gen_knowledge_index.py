@@ -18,9 +18,9 @@ from collections import Counter
 CATEGORIES = [
     "01_数据获取与处理",
     "02_高级特征工程",
-    "03_预测模型",
-    "04_交易策略",
-    "05_回测系统与风险评估",
+    "03_建模方法",
+    "04_决策与应用",
+    "05_评估与稳健性",
     "06_失败经验",
     "07_验证证据",
 ]
@@ -107,7 +107,7 @@ def build(cards) -> str:
     out.append("generator: scripts/gen_knowledge_index.py")
     out.append("---")
     out.append("")
-    out.append("# 量化算法知识库索引")
+    out.append("# 行业算法能力知识库索引")
     out.append("")
     out.append(
         "> 本文件由 `scripts/gen_knowledge_index.py` 从卡片 frontmatter 自动生成，**请勿手工编辑**。"

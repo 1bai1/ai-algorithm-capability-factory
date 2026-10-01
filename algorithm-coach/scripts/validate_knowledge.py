@@ -25,9 +25,9 @@ from collections import Counter, defaultdict
 CATEGORIES = [
     "01_数据获取与处理",
     "02_高级特征工程",
-    "03_预测模型",
-    "04_交易策略",
-    "05_回测系统与风险评估",
+    "03_建模方法",
+    "04_决策与应用",
+    "05_评估与稳健性",
     "06_失败经验",
     "07_验证证据",
 ]
@@ -162,8 +162,7 @@ def collect_cards(cards_dir: str, rep: Report) -> dict[str, dict]:
     for cat in CATEGORIES:
         d = os.path.join(cards_dir, cat)
         if not os.path.isdir(d):
-            rep.error(os.path.relpath(d, cards_dir), 0, "类目目录不存在")
-            continue
+            continue          # 空库或新场景尚未建该类目，跳过而非报错
         for fn in sorted(os.listdir(d)):
             if not fn.endswith(".md") or fn == "README.md":
                 continue

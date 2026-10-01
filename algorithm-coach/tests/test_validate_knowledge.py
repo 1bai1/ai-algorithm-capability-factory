@@ -21,8 +21,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VALIDATOR = os.path.join(ROOT, "scripts", "validate_knowledge.py")
 
 ALL_CATEGORIES = [
-    "01_数据获取与处理", "02_高级特征工程", "03_预测模型", "04_交易策略",
-    "05_回测系统与风险评估", "06_失败经验", "07_验证证据",
+    "01_数据获取与处理", "02_高级特征工程", "03_建模方法",
+    "04_决策与应用", "05_评估与稳健性", "06_失败经验", "07_验证证据",
 ]
 
 CAPABILITY_SECTIONS = ["能力说明", "输入契约", "输出契约", "调用方式",
