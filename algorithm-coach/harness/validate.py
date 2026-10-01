@@ -19,11 +19,11 @@ from pathlib import Path
 import pandas as pd
 
 from . import __version__, contract, data, runner
-from .checks import correctness, interface, stability
+from .checks import correctness, interface, performance, stability
 from .report import Report
 from .split import Split, split_features
 
-ALL_MODULES = ("interface", "correctness", "stability")
+ALL_MODULES = ("interface", "correctness", "performance", "stability")
 
 
 class Validator:
@@ -35,6 +35,7 @@ class Validator:
     def __init__(self, algo_dir: str | Path, data_path: str | Path,
                  cutoff: str | None = None, test_size: float = 0.2,
                  budget: float | None = None, seed: int | None = None,
+                 cost: float | None = None,
                  module_name: str = "algorithm",
                  modules: tuple[str, ...] | None = None):
         self.algo_dir = Path(algo_dir)
@@ -51,10 +52,13 @@ class Validator:
         self.split: Split | None = None
         self.split_error: str | None = None
         self.chain: runner.RunResult | None = None
+        self.insample: runner.RunResult | None = None
+        self.metrics_payload: dict = {}
 
         self.modules = tuple(modules) if modules else ALL_MODULES
         self._budget = budget
         self._seed = seed
+        self._cost = cost
         self.report = Report()
         self._started = time.perf_counter()
 
@@ -77,6 +81,15 @@ class Validator:
             return int(self._seed)
         return self.manifest.seed if self.manifest else contract.DEFAULT_SEED
 
+    @property
+    def cost(self) -> float:
+        """单边费率：命令行 > manifest > 默认。"""
+        if self._cost is not None:
+            return float(self._cost)
+        if self.manifest is not None:
+            return float(self.manifest.cost_per_side)
+        return float(contract.DEFAULT_COST_PER_SIDE)
+
     # ---------------------------------------------------------------- 编排
     def run(self) -> Report:
         results = []
@@ -95,6 +108,13 @@ class Validator:
             results += correctness.run(self) if gate_ok else correctness.skipped_all(gate_reason)
         else:
             results += correctness.skipped_all("未启用功能正确性模块")
+
+        if "performance" in self.modules:
+            results += performance.run(self) if gate_ok else performance.skipped_all(gate_reason)
+            if self.metrics_payload:
+                self.report.metrics = self.metrics_payload
+        else:
+            results += performance.skipped_all("未启用指标表现模块")
 
         if "stability" in self.modules:
             results += stability.run(self) if gate_ok else stability.skipped_all(gate_reason)
@@ -118,6 +138,10 @@ class Validator:
             return
         self.chain = runner.run_chain(self.algo_dir, self.module_name, split.train_df,
                                       split.test_features, self.seed, self.budget)
+        # 样本内预测（同一模型、训练段上），只用于「样本内外差距」披露
+        self.insample = runner.run_chain(
+            self.algo_dir, self.module_name, split.train_df,
+            split.train_df.drop(columns=[contract.LABEL_COLUMN]), self.seed, self.budget)
 
     # ---------------------------------------------------------------- 产出
     def save(self, out_dir: str | Path) -> tuple[Path, Path]:

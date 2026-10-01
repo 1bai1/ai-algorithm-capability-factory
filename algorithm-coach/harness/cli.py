@@ -29,6 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--budget", type=float, default=None,
                    help="fit/predict 时间预算（秒），默认取 manifest.budget_seconds")
     p.add_argument("--seed", type=int, default=None, help="覆盖 manifest 的随机种子")
+    p.add_argument("--cost", type=float, default=None,
+                   help="单边费率（手续费+滑点），默认取 manifest.cost_per_side 或 0.0005")
     p.add_argument("--module-name", default="algorithm", help="入口模块名，默认 algorithm")
     p.add_argument("--modules", default=",".join(ALL_MODULES),
                    help="启用的检查模块，逗号分隔")
@@ -56,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
             test_size=args.test_size,
             budget=args.budget,
             seed=args.seed,
+            cost=args.cost,
             module_name=args.module_name,
             modules=modules,
         )

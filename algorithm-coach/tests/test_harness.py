@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from harness import metrics
 from harness.contract import parse_manifest
 from harness.report import Report
 from harness.validate import Validator
@@ -140,6 +141,11 @@ WARMUP_60 = GOOD.replace(
     '    out["ma60_dev"] = log_close - np.log(close.rolling(60).mean())'
 ).replace('FEATURES = ["r1", "r5", "r20", "vol20", "ma20_dev", "amp"]',
           'FEATURES = ["r1", "r5", "r20", "vol20", "ma20_dev", "amp", "ma60_dev"]')
+
+# 反向预测：把好信号取负，方向准确率必然低于任何基线
+INVERTED = GOOD.replace(
+    "    return model.ridge.predict(model.scaler.transform(X))",
+    "    return -model.ridge.predict(model.scaler.transform(X))")
 
 # 慢：fit 里睡 5 秒
 SLOW = GOOD.replace("def fit(train_df):", "def fit(train_df):\n    import time; time.sleep(5)")
@@ -319,6 +325,106 @@ class TestInterfaceGate(HarnessTestCase):
         _, report = self.validate(algo_dir, modules=("interface", "correctness"))
         self.assertIs(self.check(report, "interface.smoke").passed, False)
         self.assertIsNone(self.check(report, "correctness.label_reconcile").passed)
+
+
+class TestMetricsUnit(unittest.TestCase):
+    """指标纯函数：用手算的数值直接断言（不启子进程）。"""
+
+    def test_error_and_direction(self):
+        self.assertAlmostEqual(metrics.rmse([0.0, 0.0], [1.0, 1.0]), 1.0)
+        self.assertAlmostEqual(metrics.rmse([0.1, -0.1], [0.1, -0.1]), 0.0)
+        self.assertAlmostEqual(metrics.direction_accuracy([1.0, -1.0], [0.5, 0.5]), 0.5)
+        self.assertAlmostEqual(metrics.up_share([1.0, 2.0, -3.0, 4.0]), 0.75)
+        self.assertAlmostEqual(
+            metrics.persistence_accuracy([0.01, -0.01], [0.02, -0.02]), 1.0)
+
+    def test_information_coefficient(self):
+        self.assertAlmostEqual(
+            metrics.information_coefficient([1.0, 2.0, 3.0], [0.1, 0.2, 0.3]), 1.0)
+        # 常数预测没有排序信息
+        self.assertIsNone(metrics.information_coefficient([1.0, 1.0, 1.0], [0.1, 0.2, 0.3]))
+
+    def test_positions_are_non_overlapping(self):
+        positions, trades = metrics.build_positions(np.array([2, 5, 12]), horizon=5, n_total=20)
+        # 2 号信号 → 3 建仓持到 8；5 号信号落在持仓期内被跳过；12 号 → 13 建仓
+        self.assertEqual(trades, [(3, 8), (13, 18)])   # 5 号信号落在持仓期内，被跳过
+        self.assertEqual(list(positions[3:8]), [1.0] * 5)
+        self.assertEqual(positions[8], 0.0)      # 第一段持仓到此结束
+        self.assertEqual(positions[12], 0.0)     # 12 号信号次日才建仓
+        self.assertEqual(list(positions[13:18]), [1.0] * 5)
+        self.assertEqual(positions[18], 0.0)
+
+    def test_strategy_returns_charge_costs(self):
+        close = np.array([100.0, 110.0, 110.0])
+        positions = np.array([0.0, 1.0, 1.0])
+        free = metrics.strategy_returns(close, positions, cost_per_side=0.0)
+        self.assertAlmostEqual(free[1], 0.1)
+        charged = metrics.strategy_returns(close, positions, cost_per_side=0.001)
+        self.assertAlmostEqual(charged[1], 0.099)          # 建仓收一次
+        self.assertAlmostEqual(charged[2], -0.001)         # 期末强制平仓再收一次
+
+    def test_equity_stats(self):
+        stats = metrics.equity_stats(np.array([0.1, -0.1]))
+        self.assertAlmostEqual(stats["cum_return"], -0.01)
+        self.assertAlmostEqual(stats["max_drawdown"], -0.1)
+
+    def test_trade_stats_per_trade(self):
+        net = np.zeros(10)
+        net[2:5] = [0.05, 0.05, -0.02]
+        info = metrics.trade_stats(net, [(2, 5)])
+        self.assertEqual(info["trades"], 1)
+        self.assertAlmostEqual(info["win_rate"], 1.0)
+        self.assertAlmostEqual(info["profit_loss_ratio"], float("inf"))
+        self.assertAlmostEqual(
+            metrics.trade_stats(net, [(2, 5)])["avg_win"], 1.05 * 1.05 * 0.98 - 1)
+
+    def test_buy_hold_and_cost_scan(self):
+        bench = metrics.buy_hold_stats(np.array([100.0, 110.0]), 0, 1, cost_per_side=0.001)
+        self.assertAlmostEqual(bench["cum_return"], 0.098)
+        close = np.array([100.0, 101.0, 102.0, 103.0])
+        positions = np.array([0.0, 1.0, 1.0, 1.0])
+        scan = metrics.cost_scan(close, positions, base_cost=0.001)
+        cums = [s["cum_return"] for s in scan]
+        self.assertEqual(len(cums), 3)
+        self.assertGreater(cums[0], cums[1])
+        self.assertGreater(cums[1], cums[2])
+
+
+class TestPerformance(HarnessTestCase):
+    """指标表现模块端到端：数值齐备 + 反向预测被判负。"""
+
+    def test_metrics_are_reported(self):
+        algo_dir = self.make_algo_dir("good_perf", GOOD)
+        validator, report = self.validate(
+            algo_dir, modules=("interface", "correctness", "performance"))
+        m = report.metrics
+        for key in ("setup", "prediction", "trading", "benchmark", "robustness"):
+            self.assertIn(key, m)
+        self.assertGreater(m["prediction"]["rows"], 30)
+        self.assertIsNotNone(m["prediction"]["rmse"])
+        self.assertIsNotNone(m["trading"]["cum_return"])
+        self.assertIsNotNone(m["benchmark"]["buy_hold"]["cum_return"])
+        self.assertEqual(len(m["robustness"]["cost_scan"]), 3)
+        for cid in ("performance.prediction_quality", "performance.trading_vs_benchmark",
+                    "performance.drawdown_constraint", "performance.cost_sensitivity",
+                    "performance.overfit_gap"):
+            item = self.check(report, cid)
+            self.assertIsNotNone(item.passed, f"{cid} 未运行: {item.detail}")
+        # 报告 JSON 里应带上指标数值
+        json_path, md_path = validator.save(self.tmp / "good_perf" / "validation")
+        payload = json.loads(json_path.read_text(encoding="utf-8"))
+        self.assertIn("metrics", payload)
+        self.assertIsNotNone(payload["metrics"]["trading"]["cum_return"])
+        self.assertIn("交易账", md_path.read_text(encoding="utf-8"))
+
+    def test_inverted_prediction_fails_quality(self):
+        algo_dir = self.make_algo_dir("inverted", INVERTED)
+        _, report = self.validate(
+            algo_dir, modules=("interface", "correctness", "performance"))
+        item = self.check(report, "performance.prediction_quality")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("方向准确率低于最好基线", item.detail)
+        self.assertIsNotNone(self.check(report, "performance.trading_vs_benchmark").passed)
 
 
 class TestManifestParsing(unittest.TestCase):

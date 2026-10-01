@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from .. import contract, data, runner
+from .. import contract, data, metrics, runner
 from ..report import CheckResult
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -255,9 +255,10 @@ def _check_naive_baseline(v: "Validator", previous: list[CheckResult]) -> CheckR
 
     t = truth[mask]
     p = preds[mask]
-    model_acc = float(np.mean(np.sign(p) == np.sign(t)))
-    up_acc = float(np.mean(t > 0))
-    persist_acc = float(np.mean(np.sign(r1_test[mask]) == np.sign(t)))
+    # 与「指标表现」模块共用同一套基线实现，避免两处算出不同的数
+    model_acc = metrics.direction_accuracy(p, t)
+    up_acc = metrics.up_share(t)
+    persist_acc = metrics.persistence_accuracy(t, r1_test[mask])
     best = max(up_acc, persist_acc)
 
     detail = (f"方向准确率 模型 {model_acc:.3f} / 全猜涨 {up_acc:.3f} / 明日=今日 {persist_acc:.3f}"

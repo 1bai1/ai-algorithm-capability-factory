@@ -12,8 +12,26 @@ from pathlib import Path
 MODULE_TITLES = {
     "interface": "接口规范",
     "correctness": "功能正确性",
+    "performance": "指标表现",
     "stability": "运行稳定性",
 }
+
+
+def _pct(x: float | None, digits: int = 2, signed: bool = True) -> str:
+    if x is None:
+        return "—"
+    if isinstance(x, float) and x == float("inf"):
+        return "∞"
+    sign = "+" if signed else ""
+    return f"{100 * x:{sign}.{digits}f}%"
+
+
+def _num(x: float | None, digits: int = 3) -> str:
+    if x is None:
+        return "—"
+    if isinstance(x, float) and x == float("inf"):
+        return "∞"
+    return f"{x:.{digits}f}"
 
 STATUS_PASS = "通过"
 STATUS_FAIL = "未通过"
@@ -55,6 +73,7 @@ class CheckResult:
 class Report:
     meta: dict = field(default_factory=dict)
     checks: list[CheckResult] = field(default_factory=list)
+    metrics: dict = field(default_factory=dict)      # 指标表现的全部数值
 
     # ---------------------------------------------------------------- 统计
     def by_module(self, module: str) -> list[CheckResult]:
@@ -83,6 +102,7 @@ class Report:
         return {
             "meta": self.meta,
             "modules": modules,
+            "metrics": self.metrics,
             "conclusion": {
                 "passed": self.passed_all,
                 "failed": [c.id for c in self.failed],
@@ -132,7 +152,10 @@ class Report:
             items = self.by_module(module)
             if not items:
                 continue
-            lines += [f"## {title}", "", "| 检查项 | 结果 | 说明 |", "|---|---|---|"]
+            lines += [f"## {title}", ""]
+            if module == "performance" and self.metrics:
+                lines += self._metrics_markdown()
+            lines += ["| 检查项 | 结果 | 说明 |", "|---|---|---|"]
             for c in items:
                 icon = {STATUS_PASS: "✓", STATUS_FAIL: "✗", STATUS_SKIP: "—"}[c.status_text]
                 detail = (c.detail or "").replace("\n", " ").replace("|", "\\|")
@@ -156,3 +179,73 @@ class Report:
             lines += ["## 未通过项明细", "", "无。", ""]
 
         return "\n".join(lines)
+
+    # ------------------------------------------------------- 指标表现明细
+    def _metrics_markdown(self) -> list[str]:
+        m = self.metrics
+        setup = m.get("setup", {})
+        lines = [
+            f"> 口径：{setup.get('rule', '-')}；horizon={setup.get('horizon', '-')}；"
+            f"单边成本 {100 * setup.get('cost_per_side', 0):.3f}%；"
+            f"阈值（训练段预测中位数）{_num(setup.get('threshold'), 6)}",
+            "",
+        ]
+
+        p = m.get("prediction")
+        if p:
+            lines += [
+                "### 精度账",
+                "",
+                "| 指标 | 数值 | 对照 |",
+                "|---|---|---|",
+                f"| RMSE | {100 * p['rmse']:.2f}% | 零预测基线 {100 * p['rmse_zero_baseline']:.2f}% |",
+                f"| 方向准确率 | {p['direction_accuracy']:.3f} | "
+                f"全猜涨 {p['baseline_up']:.3f} / 明日=今日 {p['baseline_persistence']:.3f} |",
+                f"| IC（Spearman 秩相关） | {_num(p['ic'])} | — |",
+                f"| 样本外行数 | {p['rows']} | — |",
+                "",
+            ]
+
+        t, b, bm = m.get("trading"), m.get("benchmark", {}).get("buy_hold", {}), m.get("benchmark", {})
+        if t:
+            lines += [
+                "### 交易账（样本外，策略 vs 买入持有）",
+                "",
+                "| 指标 | 策略 | 买入持有 |",
+                "|---|---|---|",
+                f"| 累计收益率 | {_pct(t['cum_return'])} | {_pct(b.get('cum_return'))} |",
+                f"| 年化收益率 | {_pct(t['annual_return'])} | {_pct(b.get('annual_return'))} |",
+                f"| 年化波动率（辅助） | {_pct(t['annual_vol'], signed=False)} | "
+                f"{_pct(b.get('annual_vol'), signed=False)} |",
+                f"| 夏普比率 | {_num(t['sharpe'], 2)} | {_num(b.get('sharpe'), 2)} |",
+                f"| 最大回撤 | {_pct(t['max_drawdown'])} | {_pct(b.get('max_drawdown'))} |",
+                f"| 胜率（按笔） | {_num(t['win_rate'])} | — |",
+                f"| 盈亏比（按笔） | {_num(t['profit_loss_ratio'], 2)} | — |",
+                f"| 年化双边换手 | {_num(t.get('turnover_annual'), 0)} | — |",
+                f"| 交易笔数（辅助） | {t['trades']} | 1 |",
+                f"| 超额收益 | {_pct(bm.get('excess_return'))} | — |",
+                f"| 夏普差 | {_num(bm.get('sharpe_diff'), 2)} | — |",
+                "",
+            ]
+
+        r = m.get("robustness")
+        if r:
+            scan = r.get("cost_scan", [])
+            if scan:
+                lines += ["### 成本敏感度", "", "| 成本倍数 | 单边费率 | 累计收益 | 夏普 | 最大回撤 |",
+                          "|---|---|---|---|---|"]
+                for s in scan:
+                    lines.append(f"| ×{s['multiplier']:g} | {100 * s['cost_per_side']:.3f}% | "
+                                 f"{_pct(s['cum_return'])} | {_num(s['sharpe'], 2)} | "
+                                 f"{_pct(s['max_drawdown'])} |")
+                lines.append("")
+            ins, outs, gap = r.get("in_sample", {}), r.get("out_of_sample", {}), r.get("gap", {})
+            if ins or outs:
+                lines += ["### 样本内外差距", "", "| 口径 | 方向准确率 | RMSE |", "|---|---|---|",
+                          f"| 样本内（训练段） | {_num(ins.get('direction_accuracy'))} | "
+                          f"{_pct(ins.get('rmse'), 2, signed=False)} |",
+                          f"| 样本外 | {_num(outs.get('direction_accuracy'))} | "
+                          f"{_pct(outs.get('rmse'), 2, signed=False)} |",
+                          f"| 差距 | {_num(gap.get('direction_accuracy'))} | "
+                          f"{_pct(gap.get('rmse'), 2)} |", ""]
+        return lines

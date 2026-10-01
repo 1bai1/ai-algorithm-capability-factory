@@ -3,7 +3,8 @@
 生成的算法目录必须包含两个文件::
 
     <algo_dir>/algorithm.py    入口模块，定义 build_features / fit / predict
-    <algo_dir>/manifest.json   声明标的、标签定义、随机种子与时间预算
+    <algo_dir>/manifest.json   声明标的、标签定义、随机种子、时间预算与成本口径
+                               （可选字段 cost_per_side：单边手续费+滑点，默认 0.0005）
 
 三个函数
 --------
@@ -59,6 +60,7 @@ REQUIRED_FUNCS: dict[str, int] = {
 
 DEFAULT_SEED = 42
 DEFAULT_BUDGET_SECONDS = 300
+DEFAULT_COST_PER_SIDE = 0.0005      # 单边手续费 + 滑点，进出各收一次
 
 
 @dataclass
@@ -77,6 +79,7 @@ class Manifest:
     label: LabelSpec
     seed: int = DEFAULT_SEED
     budget_seconds: int = DEFAULT_BUDGET_SECONDS
+    cost_per_side: float = DEFAULT_COST_PER_SIDE
 
     def to_dict(self) -> dict:
         return {
@@ -84,6 +87,7 @@ class Manifest:
             "label": {"horizon": self.label.horizon, "type": self.label.type},
             "seed": self.seed,
             "budget_seconds": self.budget_seconds,
+            "cost_per_side": self.cost_per_side,
         }
 
 
@@ -140,10 +144,16 @@ def parse_manifest(path: str | Path) -> tuple[Manifest | None, list[str]]:
         errors.append("budget_seconds 必须是 >=1 的整数")
         budget = DEFAULT_BUDGET_SECONDS
 
+    cost = raw.get("cost_per_side", DEFAULT_COST_PER_SIDE)
+    if isinstance(cost, bool) or not isinstance(cost, (int, float)) or cost < 0:
+        errors.append("cost_per_side 必须是 >=0 的数字（单边费率，含手续费与滑点）")
+        cost = DEFAULT_COST_PER_SIDE
+
     if errors:
         return None, errors
     return Manifest(symbol=symbol, label=LabelSpec(horizon=horizon, type=ret_type),
-                    seed=seed, budget_seconds=budget), []
+                    seed=seed, budget_seconds=budget,
+                    cost_per_side=float(cost)), []
 
 
 def load_algorithm(algo_dir: str | Path, module_name: str = "algorithm") -> ModuleType:
