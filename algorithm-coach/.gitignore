@@ -9,3 +9,6 @@ knowledge/.obsidian/workspace.json
 # 付费课程原文，仅本地留存，不随仓库公开分发
 knowledge/原始池/线上博客/
 
+# 任务运行产出的数据文件：可再生，不入库（代码、文档、卡片、校验结果照常入库）
+knowledge/任务池/**/data/
+
