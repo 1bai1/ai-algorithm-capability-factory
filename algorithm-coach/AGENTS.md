@@ -110,19 +110,21 @@ matplotlib——装包也不会落到 math 环境里。缺依赖时装进 math �
 
 **不跑通不算完成。** 代码写完只是半步，跑出全绿报告才算交付；不得声称成功。
 
-> ⚠️ **本分支的任务类型尚未切换。** harness 目前只支持时序预测契约
-> （`manifest` 必填 `symbol` / `label.horizon` / `label.type`，指标表现给出的是收益与回测类判据）。
-> 分类任务的契约与指标账仍在改造中——**改造完成前，不要按分类任务交付**。
+> **两种任务类型都支持**，由 `manifest.task` 决定用哪套契约与判据：
+> `time_series`（默认）用时序契约 + 回测账；`classification` 用分类契约 + 分类账
+> （准确率 / 宏 F1 / 混淆矩阵，对标多数类基线与 harness 自带的 TF-IDF+线性参考基线）。
+> 明细见 `harness/contract.py` 与 `harness/checks/`。
 
 **算法契约**（全文在 `harness/contract.py`）：一个任务目录里放 `algorithm.py` + `manifest.json`。
 
 | 项 | 要求 |
 |---|---|
-| `build_features(df)` | 行数不变：预热期 NaN 行保留，不删行、不动 `date` 列；必须含 `label` 列 |
+| `build_features(df)` | 行数不变、不删行；**只做逐行变换，不许"学"任何东西**（词表/IDF/均值/分位数都要放到 `fit` 里）；必须含标签列 |
 | `fit(train_df)` | 只吃训练段（含 `label` 列） |
 | `predict(model, test_df)` | 长度 = 测试集行数；`test_df` 已剥掉 label 列 |
-| `manifest.json` | 必填 `symbol`、`label.horizon`、`label.type`（`simple`/`log`）；可选 `seed`、`budget_seconds`、`cost_per_side`（单边费率，默认 0.0005） |
-| 切分与阈值 | 由 harness 控制，算法不要自己切分；策略阈值取训练段预测中位数，别用默认 0 |
+| `manifest.json` | 必填 `subject`；`task` 取 `time_series`（默认）或 `classification`。时序：`label.horizon`、`label.type`（`simple`/`log`）、可选 `cost_per_side`；分类：`label.column`、`label.classes`、`text_column`。公共可选 `seed`、`budget_seconds` |
+| 切分 | 由 harness 控制：时序按日期切，分类按分层随机切（带固定 seed）；算法不要自己切分 |
+| 阈值/基线 | 时序：策略阈值取训练段预测中位数（别用默认 0）；分类：必须报宏 F1，并与多数类基线、TF-IDF+线性参考基线对照 |
 
 **验收命令**（四个模块：接口规范＝闸门、功能正确性、指标表现、运行稳定性）：
 
