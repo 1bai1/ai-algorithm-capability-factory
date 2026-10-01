@@ -1,0 +1,232 @@
+{
+  "meta": {
+    "timestamp": "2026-10-01 16:52:01",
+    "harness_version": "0.1.0",
+    "python": "3.9.23",
+    "platform": "Windows-10-10.0.26100-SP0",
+    "algo_dir": "examples\\baseline_601318",
+    "data_path": "knowledge/任务池/2026-10-01_601318_验证机制校准/data/601318_daily.csv",
+    "data_rows": 4066,
+    "data_start": "2010-01-04",
+    "data_end": "2026-09-29",
+    "cutoff": "2024-01-01",
+    "seed": 42,
+    "budget_seconds": 300.0,
+    "modules": [
+      "interface",
+      "correctness",
+      "stability"
+    ],
+    "elapsed_seconds": 22.7,
+    "counters": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "manifest": {
+      "symbol": "601318",
+      "label": {
+        "horizon": 5,
+        "type": "simple"
+      },
+      "seed": 42,
+      "budget_seconds": 300
+    },
+    "train_rows": 3284,
+    "train_start": "2010-04-06",
+    "train_end": "2023-12-29",
+    "test_rows": 665,
+    "test_start": "2024-01-02",
+    "test_end": "2026-09-29"
+  },
+  "modules": {
+    "interface": {
+      "title": "接口规范",
+      "passed": true,
+      "checks": [
+        {
+          "id": "interface.files",
+          "module": "interface",
+          "name": "提交物齐全",
+          "passed": true,
+          "detail": "algorithm.py 与 manifest.json 均在",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.manifest",
+          "module": "interface",
+          "name": "manifest 合法",
+          "passed": true,
+          "detail": "symbol=601318, label=simple h=5, seed=42, budget=300s",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.import",
+          "module": "interface",
+          "name": "模块可导入",
+          "passed": true,
+          "detail": "模块导入成功",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.functions",
+          "module": "interface",
+          "name": "契约函数齐全",
+          "passed": true,
+          "detail": "build_features / fit / predict 均已定义",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.signatures",
+          "module": "interface",
+          "name": "函数签名正确",
+          "passed": true,
+          "detail": "三个函数的参数个数符合契约",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "interface.smoke",
+          "module": "interface",
+          "name": "冒烟运行",
+          "passed": true,
+          "detail": "150 行数据上 build_features→fit→predict 全通（训练 41 行，预测 15 行）",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
+        }
+      ]
+    },
+    "correctness": {
+      "title": "功能正确性",
+      "passed": true,
+      "checks": [
+        {
+          "id": "correctness.row_conservation",
+          "module": "correctness",
+          "name": "行数守恒",
+          "passed": true,
+          "detail": "4066 行进 4066 行出，date 列未改动",
+          "location": null,
+          "kb_card": null,
+          "elapsed": 0.9004422999999999,
+          "status": "通过"
+        },
+        {
+          "id": "correctness.label_reconcile",
+          "module": "correctness",
+          "name": "标签口径对账",
+          "passed": true,
+          "detail": "4061 个标签逐行一致（最大偏差 0.00e+00），口径 simple horizon=5",
+          "location": null,
+          "kb_card": "评价指标口径与量纲误用",
+          "elapsed": null,
+          "status": "通过"
+        },
+        {
+          "id": "correctness.truncation",
+          "module": "correctness",
+          "name": "截断一致性（反前视）",
+          "passed": true,
+          "detail": "全量与前 2846 行两次运行，21 列特征逐行一致（最大偏差 0.0e+00）",
+          "location": null,
+          "kb_card": "全样本统计量泄漏",
+          "elapsed": 0.8865801,
+          "status": "通过"
+        },
+        {
+          "id": "correctness.prediction_validity",
+          "module": "correctness",
+          "name": "预测输出有效性",
+          "passed": true,
+          "detail": "665 个预测全部有限，取值范围 [-0.01042, 0.01846]",
+          "location": null,
+          "kb_card": "预测输出有效性未校验",
+          "elapsed": 0.9450138,
+          "status": "通过"
+        },
+        {
+          "id": "correctness.naive_baseline",
+          "module": "correctness",
+          "name": "朴素基线对比",
+          "passed": true,
+          "detail": "方向准确率 模型 0.521 / 全猜涨 0.529 / 明日=今日 0.492（样本 660 行）",
+          "location": null,
+          "kb_card": "缺朴素基线导致预测力误判",
+          "elapsed": null,
+          "status": "通过"
+        }
+      ]
+    },
+    "stability": {
+      "title": "运行稳定性",
+      "passed": true,
+      "checks": [
+        {
+          "id": "stability.timeout",
+          "module": "stability",
+          "name": "时间预算",
+          "passed": true,
+          "detail": "fit/predict 0.9s / 预算 300s；build_features 0.9s",
+          "location": null,
+          "kb_card": null,
+          "elapsed": 0.9450138,
+          "status": "通过"
+        },
+        {
+          "id": "stability.determinism",
+          "module": "stability",
+          "name": "确定性（同种子可复现）",
+          "passed": true,
+          "detail": "同种子两次运行 665 个预测完全一致（各 0.9s / 0.9s）",
+          "location": null,
+          "kb_card": "过拟合与结果不稳定",
+          "elapsed": 1.7974350000000001,
+          "status": "通过"
+        },
+        {
+          "id": "stability.small_sample",
+          "module": "stability",
+          "name": "小样本不崩",
+          "passed": true,
+          "detail": "150 行数据 全链路跑通（训练 45 行，预测 45 行）",
+          "location": null,
+          "kb_card": null,
+          "elapsed": 1.8167727,
+          "status": "通过"
+        },
+        {
+          "id": "stability.bad_data",
+          "module": "stability",
+          "name": "坏数据不崩",
+          "passed": true,
+          "detail": "注入缺失值并删除若干行后 全链路跑通（训练 1635 行，预测 813 行）",
+          "location": null,
+          "kb_card": null,
+          "elapsed": 1.8647664000000002,
+          "status": "通过"
+        }
+      ]
+    }
+  },
+  "conclusion": {
+    "passed": true,
+    "failed": [],
+    "skipped": []
+  }
+}

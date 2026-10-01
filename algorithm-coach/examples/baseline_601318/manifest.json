@@ -1,0 +1,9 @@
+{
+  "symbol": "601318",
+  "label": {
+    "horizon": 5,
+    "type": "simple"
+  },
+  "seed": 42,
+  "budget_seconds": 300
+}
