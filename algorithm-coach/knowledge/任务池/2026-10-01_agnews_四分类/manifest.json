@@ -1,0 +1,11 @@
+{
+  "task": "classification",
+  "subject": "ag_news_4class",
+  "label": {
+    "column": "label",
+    "classes": ["Business", "SciTech", "Sports", "World"]
+  },
+  "text_column": "text",
+  "seed": 42,
+  "budget_seconds": 300
+}
