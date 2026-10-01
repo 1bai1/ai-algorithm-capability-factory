@@ -1,0 +1,23 @@
+{
+  "name": "regression",
+  "description": "回归预测任务：预测未来若干期的连续收益率。适用于个股收益预测、价格预测等。",
+
+  "target_column": "target",
+  "horizon": 5,
+
+  "split": {
+    "method": "time",
+    "train_ratio": 0.8,
+    "min_test_rows": 30
+  },
+
+  "timeout_sec": 300,
+
+  "checks": [
+    "interface",
+    "lookahead",
+    "runs",
+    "prediction_valid",
+    "timeout"
+  ]
+}
