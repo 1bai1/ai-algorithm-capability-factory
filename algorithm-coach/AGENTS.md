@@ -115,9 +115,10 @@ matplotlib——装包也不会落到 math 环境里。缺依赖时装进 math �
 **验收命令**（四个模块：接口规范＝闸门、功能正确性、指标表现、运行稳定性）：
 
 ```bash
-D:/environment/miniconda3/envs/math/python.exe -m harness validate <算法目录> \
-  --data <日线csv> --cutoff <YYYY-MM-DD> --out knowledge/任务池/<日期>_<代码>_<任务名>/
+D:/environment/miniconda3/envs/math/python.exe -m harness validate <算法目录> --data <日线csv> --cutoff <YYYY-MM-DD> --out knowledge/任务池/<日期>_<代码>_<任务名>/
 ```
+
+（写成一行：本机 shell 工具是 powershell，反斜杠续行在它那里不成立。）
 
 **按报告修，不要靠猜**：产物目录里有 `report.json`（机器读）与 `report.md`（人读）；
 每条未通过项带 `detail`、出错位置 `location`、依据知识卡 `kb_card`，
