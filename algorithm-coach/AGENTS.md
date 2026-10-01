@@ -98,10 +98,6 @@ $env:Path = "D:\environment\miniconda3\envs\math;D:\environment\miniconda3\envs\
 **不要敲裸 `python`**：PATH 里那个指向 WindowsApps 占位符，而 base 环境没有 scikit-learn /
 matplotlib——装包也不会落到 math 环境里。缺依赖时装进 math 环境。
 
-**长任务不要把输出接管道。** 实测：`python xxx.py 2>&1 | Select-String "..."` 会挂到
-超时（300s 被杀），改成重定向到文件再读就正常。要抓输出一律用
-`python xxx.py > run.log 2>&1`，然后读 `run.log`。
-
 ## 验证规则
 
 - 不跑通不算完成。在 `harness/` 中真实执行，不得声称成功。
