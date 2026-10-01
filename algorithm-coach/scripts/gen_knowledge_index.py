@@ -81,7 +81,10 @@ def collect(cards_dir: str):
                     "name": name,
                     "file": fn,
                     "status": frontmatter_field(text, "status") or "未标注",
-                    "desc": first_sentence(section(text, "能力说明")),
+                    # 能力卡有「能力说明」；失败模式卡按 schema 用「错误模式」，
+                    # 依次回退，别让描述留空。
+                    "desc": first_sentence(
+                        section(text, "能力说明") or section(text, "错误模式")),
                     "path": f"复用池/{cat}/{fn[:-3]}",
                     "stem": fn[:-3],
                     "edges": [
@@ -95,6 +98,9 @@ def collect(cards_dir: str):
 
 
 def build(cards) -> str:
+    distilled_dir = os.path.join(repo_root(), "knowledge", "提炼池")
+    distilled_count = (sum(len(fs) for _, _, fs in os.walk(distilled_dir))
+                       if os.path.isdir(distilled_dir) else 0)
     by_cat = {cat: [c for c in cards if c["cat"] == cat] for cat in CATEGORIES}
     status_counts = Counter(c["status"] for c in cards)
     edge_counts = Counter(e[0] for c in cards for e in c["edges"])
@@ -121,12 +127,12 @@ def build(cards) -> str:
     out.append("| 层 | 位置 | 内容 | 何时读 |")
     out.append("|---|---|---|---|")
     out.append(f"| 复用池 | `复用池/` | {len(cards)} 张能力卡，按能力组织的可执行知识 | **默认工作层**，任务开始就读 |")
-    out.append("| 提炼池 | `提炼池/线上博客/` | 194 篇单篇提炼，目录与原始池同构 | 卡片信息不足时下钻 |")
-    out.append("| 原始池 | `原始池/线上博客/` | 课程原文（仅本地留存，未入仓库） | 需逐字核对原文时下钻 |")
+    out.append(f"| 提炼池 | `提炼池/<来源类目>/` | {distilled_count} 篇单篇提炼，目录与原始池同构 | 卡片信息不足时下钻 |")
+    out.append("| 原始池 | `原始池/<来源类目>/` | **外部来源**的原始材料（付费材料不进仓库） | 需逐字核对原文时下钻 |")
     out.append("| 任务池 | `任务池/` | 单次任务的方案、代码、结果、报告 | 任务开始时建档、结束时写回 |")
     out.append("")
-    out.append("**禁止整体读取任何一个池的目录。** 原始池约 49 万 token、提炼池约 16 万 token、")
-    out.append("复用池约 20 万 token，全库约 85 万 token，都远超上下文窗口。检索必须走下面的分层路径。")
+    out.append("**禁止整体读取任何一个池的目录。** 任何一层整读都会撑爆上下文窗口——")
+    out.append("这是硬约束，不因为库还小就放宽。检索必须走下面的分层路径。")
     out.append("")
     out.append("## 检索路径")
     out.append("")
@@ -152,7 +158,7 @@ def build(cards) -> str:
     out.append("")
     out.append("## 卡片间连接")
     out.append("")
-    out.append(f"92 张卡之间共 {total_edges} 条语义边，按类型分布：")
+    out.append(f"{len(cards)} 张卡之间共 {total_edges} 条语义边，按类型分布：")
     out.append("")
     out.append("| 边类型 | 条数 |")
     out.append("|---|---|")
@@ -164,15 +170,20 @@ def build(cards) -> str:
     header = "| 起点 \\ 终点 | " + " | ".join(c[:2] for c in CATEGORIES) + " |"
     out.append(header)
     out.append("|---" * (len(CATEGORIES) + 1) + "|")
+    stem_to_cat = {c["stem"]: c["cat"] for c in cards}
+
+    def _target_cat(raw: str) -> str | None:
+        """边目标是裸文件名（可带 |显示名），按 stem 反查所属类目。"""
+        tgt = raw.split("|")[0].strip().rsplit("/", 1)[-1]
+        if tgt.endswith(".md"):
+            tgt = tgt[:-3]
+        return stem_to_cat.get(tgt)
+
     for src in CATEGORIES:
         row = [src[:2]]
         for dst in CATEGORIES:
-            n = sum(
-                1
-                for c in by_cat[src]
-                for _, target in c["edges"]
-                if target.startswith(f"复用池/{dst}/")
-            )
+            n = sum(1 for c in by_cat[src] for _, target in c["edges"]
+                    if _target_cat(target) == dst)
             row.append(str(n) if n else "")
         out.append("| " + " | ".join(row) + " |")
     out.append("")
