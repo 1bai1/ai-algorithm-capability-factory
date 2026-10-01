@@ -78,10 +78,16 @@ def run(v: "Validator") -> list[CheckResult]:
         results += _all_skipped("manifest 不合法，跳过", from_index=2)
         return results
     v.manifest = manifest
-    results.append(_result(
-        "interface.manifest", True,
-        f"symbol={manifest.symbol}, label={manifest.label.type} h={manifest.label.horizon}, "
-        f"seed={manifest.seed}, budget={manifest.budget_seconds}s"))
+    if manifest.task == "classification":
+        detail = (f"task=classification, subject={manifest.subject}, "
+                  f"标签列={manifest.label.column}、"
+                  f"声明 {len(manifest.label.classes or [])} 类，文本列={manifest.text_column}，"
+                  f"seed={manifest.seed}, budget={manifest.budget_seconds}s")
+    else:
+        detail = (f"task=time_series, subject={manifest.subject}, "
+                  f"label={manifest.label.type} h={manifest.label.horizon}, "
+                  f"seed={manifest.seed}, budget={manifest.budget_seconds}s")
+    results.append(_result("interface.manifest", True, detail))
 
     # ---- 3~5. 导入 + 函数 + 签名（同一个子进程里一次完成）
     payload = runner.run_import(v.algo_dir, v.module_name, budget=120)

@@ -129,15 +129,26 @@ class Report:
         m = self.meta
         lines += [
             f"- 生成时间：{m.get('timestamp', '-')}",
+            f"- 任务类型：{m.get('task', 'time_series')}",
             f"- 算法目录：`{m.get('algo_dir', '-')}`",
             f"- 数据文件：`{m.get('data_path', '-')}`",
-            f"- 数据区间：{m.get('data_start', '-')} ~ {m.get('data_end', '-')}"
-            f"（{m.get('data_rows', '-')} 行）",
-            f"- 截止日：{m.get('cutoff', '-')}"
-            f"　训练段 {m.get('train_start', '-')} ~ {m.get('train_end', '-')}"
-            f"　样本外 {m.get('test_start', '-')} ~ {m.get('test_end', '-')}"
-            f"（{m.get('test_rows', '-')} 行）",
         ]
+        if m.get("task") == "classification":
+            classes = m.get("classes") or []
+            lines.append(
+                f"- 数据集：{m.get('data_rows', '-')} 行 ｜ {len(classes)} 类 "
+                f"（多数类占比 {m.get('majority_share') or 0:.3f}）"
+                f"　划分：{m.get('split', '-')}（seed={m.get('seed', '-')}）"
+                f"　训练 {m.get('train_rows', '-')} / 测试 {m.get('test_rows', '-')} 行")
+        else:
+            lines += [
+                f"- 数据区间：{m.get('data_start', '-')} ~ {m.get('data_end', '-')}"
+                f"（{m.get('data_rows', '-')} 行）",
+                f"- 截止日：{m.get('cutoff', '-')}"
+                f"　训练段 {m.get('train_start', '-')} ~ {m.get('train_end', '-')}"
+                f"　样本外 {m.get('test_start', '-')} ~ {m.get('test_end', '-')}"
+                f"（{m.get('test_rows', '-')} 行）",
+            ]
         manifest = m.get("manifest")
         if manifest:
             lines.append(f"- manifest：`{json.dumps(manifest, ensure_ascii=False)}`")
@@ -183,6 +194,8 @@ class Report:
     # ------------------------------------------------------- 指标表现明细
     def _metrics_markdown(self) -> list[str]:
         m = self.metrics
+        if m.get("setup", {}).get("task") == "classification":
+            return self._cls_metrics_markdown(m)
         setup = m.get("setup", {})
         lines = [
             f"> 口径：{setup.get('rule', '-')}；horizon={setup.get('horizon', '-')}；"
@@ -248,4 +261,58 @@ class Report:
                           f"{_pct(outs.get('rmse'), 2, signed=False)} |",
                           f"| 差距 | {_num(gap.get('direction_accuracy'))} | "
                           f"{_pct(gap.get('rmse'), 2)} |", ""]
+        return lines
+
+    # --------------------------------------------- 指标表现明细（分类任务）
+    def _cls_metrics_markdown(self, m: dict) -> list[str]:
+        s, p, b, d, o = (m["setup"], m["prediction"], m["baselines"],
+                         m["distribution"], m["overfit"])
+        ref = b.get("tfidf_logreg", {})
+        ref_acc = _num(ref.get("accuracy"), 3) if ref.get("accuracy") is not None else "—"
+        ref_f1 = _num(ref.get("macro_f1"), 3) if ref.get("macro_f1") is not None else "—"
+        ref_name = ref.get("model") or f"不可用（{ref.get('error', '-')}）"
+
+        lines = [
+            f"> 口径：{s['split']}，测试占比 {s['test_size']:.0%}，seed={s['seed']}，"
+            f"{len(s['classes'])} 类；多数类 = {s['majority_class']}",
+            "",
+            "### 精度账",
+            "",
+            "| 指标 | 算法 | 多数类基线 | 参考基线 |",
+            "|---|---|---|---|",
+            f"| 准确率 | {p['accuracy']:.3f} | {b['majority']['accuracy']:.3f} | {ref_acc} |",
+            f"| 宏 F1 | {p['macro_f1']:.3f} | {b['majority']['macro_f1']:.3f} | {ref_f1} |",
+            f"| 测试集行数 | {p['rows']} | — | — |",
+            "",
+            f"> 参考基线 = {ref_name}（harness 自带，与算法同划分、同文本列）",
+            "",
+            "### 逐类表现（算法）",
+            "",
+            "| 类别 | precision | recall | F1 | 样本数 |",
+            "|---|---|---|---|---|",
+        ]
+        for row in p["per_class"]:
+            lines.append(f"| {row['label']} | {row['precision']:.3f} | {row['recall']:.3f} "
+                         f"| {row['f1']:.3f} | {row['support']} |")
+        lines += ["", "### 混淆矩阵（行＝真实，列＝预测）", ""]
+        labels = p["confusion_labels"]
+        lines.append("| 真实\预测 | " + " | ".join(labels) + " |")
+        lines.append("|" + "---|" * (len(labels) + 1))
+        for lab, row in zip(labels, p["confusion"]):
+            lines.append(f"| **{lab}** | " + " | ".join(str(x) for x in row) + " |")
+        lines += ["", "### 类别分布（训练 / 测试）", "", "| 类别 | 训练占比 | 测试占比 | 差异 |",
+                  "|---|---|---|---|"]
+        for k in sorted(set(d["train"]) | set(d["test"])):
+            a, c = d["train"].get(k, 0.0), d["test"].get(k, 0.0)
+            lines.append(f"| {k} | {a:.3f} | {c:.3f} | {abs(a - c):.3f} |")
+        lines += ["", f"最大占比差异 {100 * d['max_shift']:.1f} 个百分点", "",
+                  "### 训练/测试差距", ""]
+        if o["gap"] is None:
+            lines.append("（取不到训练集预测）")
+        else:
+            lines += ["| 口径 | 准确率 |", "|---|---|",
+                      f"| 训练集 | {o['train_accuracy']:.3f} |",
+                      f"| 测试集 | {o['test_accuracy']:.3f} |",
+                      f"| 差距 | {100 * o['gap']:+.1f} 个百分点 |"]
+        lines.append("")
         return lines

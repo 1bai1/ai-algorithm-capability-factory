@@ -53,11 +53,15 @@ def _skip(cid: str, reason: str) -> CheckResult:
     return CheckResult.skipped(cid, MODULE, name, reason, kb_card=card)
 
 
-def skipped_all(reason: str) -> list[CheckResult]:
+def skipped_all(reason: str, task: str = "time_series") -> list[CheckResult]:
+    if task == "classification":
+        return [_cls_skip(cid, reason) for cid, _, _ in CLS_CHECKS]
     return [_skip(cid, reason) for cid, _, _ in CHECKS]
 
 
 def run(v: "Validator") -> list[CheckResult]:
+    if getattr(v, "task", "time_series") == "classification":
+        return run_classification(v)
     results = [
         _check_row_conservation(v),
         _check_label_reconcile(v),
@@ -274,3 +278,176 @@ def _tail(text: str | None, lines: int = 6) -> str:
         return "（无错误信息）"
     parts = [ln for ln in text.strip().splitlines() if ln.strip()]
     return " ⏎ ".join(parts[-lines:])
+
+
+# ===================================================== 分类任务（文本分类）的检查
+CLS_CHECKS: list[tuple[str, str, str | None]] = [
+    ("correctness.row_conservation", "行数守恒", None),
+    ("correctness.label_validity", "标签列有效性", "文本分类基准数据集与划分纪律"),
+    ("correctness.feature_fit_scope", "拟合范围一致性（反泄漏）", "文本分类评估与交叉验证"),
+    ("correctness.prediction_validity", "预测输出有效性", "文本分类评估与交叉验证"),
+    ("correctness.naive_baseline", "多数类基线对比", "基线未调优导致虚假提升"),
+]
+CLS_INFO = {cid: (name, card) for cid, name, card in CLS_CHECKS}
+CLS_MARGIN = 0.05          # 比多数类基线低这么多才算"明显没学到东西"
+
+
+def _cls_result(cid: str, passed: bool, detail: str = "", location=None,
+                elapsed: float | None = None) -> CheckResult:
+    name, card = CLS_INFO[cid]
+    return CheckResult(id=cid, module=MODULE, name=name, passed=passed, detail=detail,
+                       location=location, kb_card=card, elapsed=elapsed)
+
+
+def _cls_skip(cid: str, reason: str) -> CheckResult:
+    name, card = CLS_INFO[cid]
+    return CheckResult.skipped(cid, MODULE, name, reason, kb_card=card)
+
+
+def run_classification(v: "Validator") -> list[CheckResult]:
+    results = [
+        _check_row_conservation(v),
+        _check_label_validity(v),
+        _check_feature_fit_scope(v),
+        _check_prediction_validity_cls(v),
+    ]
+    results.append(_check_majority_baseline(v, results))
+    return results
+
+
+def _check_label_validity(v: "Validator") -> CheckResult:
+    """标签列必须存在、无缺失、至少两类；manifest 声明的类别要与数据对得上。
+
+    依据：评测口径卡要求「数据集标识与类数」必须披露，划分纪律卡要求用标准类数。
+    """
+    cid = "correctness.label_validity"
+    if v.features is None or not isinstance(v.features, pd.DataFrame):
+        return _cls_skip(cid, "特征表不可用")
+    col = v.manifest.label.column
+    if col not in v.features.columns:
+        return _cls_result(cid, False, f"特征表缺少标签列 {col}")
+    series = v.features[col]
+    missing = int(series.isna().sum() + series.astype(str).str.strip().isin(["", "nan"]).sum())
+    if missing:
+        return _cls_result(cid, False, f"标签列有 {missing} 处缺失/空值")
+    values = series.astype(str)
+    classes = sorted(values.unique())
+    if len(classes) < 2:
+        return _cls_result(cid, False, f"标签只有一类：{classes}")
+    declared = v.manifest.label.classes
+    detail = (f"{len(classes)} 类，共 {len(values)} 行；"
+              f"多数类占比 {float(values.value_counts(normalize=True).iloc[0]):.3f}")
+    if declared:
+        unexpected = sorted(set(classes) - set(declared))
+        unused = sorted(set(declared) - set(classes))
+        if unexpected:
+            return _cls_result(cid, False,
+                               f"出现未声明的类别 {unexpected}（manifest 声明 {declared}）")
+        detail += f"；manifest 声明的类别全部出现" + (f"，未出现：{unused}" if unused else "")
+    return _cls_result(cid, True, detail)
+
+
+def _check_feature_fit_scope(v: "Validator") -> CheckResult:
+    """全量拟合 vs 只用训练段拟合，在训练段行上必须给出相同的特征。
+
+    这是文本分类最重要的一条反泄漏检查：把向量化器（词表/IDF）在全量语料上
+    先 fit 再切分，是最常见的隐性泄漏——本检查直接抓它。
+    依据：评估与交叉验证卡「让特征提取也随折重训，而不是在全量语料上先 fit 词表再切分」。
+    """
+    cid = "correctness.feature_fit_scope"
+    if v.features is None or not isinstance(v.features, pd.DataFrame):
+        return _cls_skip(cid, "全量特征表不可用")
+    if len(v.features) != len(v.raw):
+        return _cls_skip(cid, "行数不一致，比对无意义")
+    if v.split is None:
+        return _cls_skip(cid, "切分不可用")
+
+    train_positions = np.setdiff1d(np.arange(len(v.raw)), v.split.test_positions)
+    subset = v.raw.iloc[train_positions].reset_index(drop=True)
+    res = runner.run_features(v.algo_dir, v.module_name, subset, v.budget)
+    if not res.ok:
+        if res.status == "timeout":
+            return _cls_result(cid, False, f"只喂训练段 {len(subset)} 行时 build_features 超时")
+        return _cls_result(cid, False,
+                           f"只喂训练段时 build_features 报错: {_tail(res.error)}", res.location)
+    frame = res.value
+    if not isinstance(frame, pd.DataFrame):
+        return _cls_result(cid, False, f"训练段返回 {type(frame).__name__}")
+    if len(frame) != len(subset):
+        return _cls_result(cid, False, f"训练段输入 {len(subset)} 行，返回 {len(frame)} 行")
+
+    label_col = v.manifest.label.column
+    columns = [c for c in v.features.columns
+               if c in frame.columns and c not in (label_col, "date")]
+    extra = [c for c in v.features.columns if c not in frame.columns
+             and c not in (label_col, "date")]
+    if extra:
+        return _cls_result(cid, False, f"只喂训练段时缺少列: {', '.join(extra[:5])}")
+    if not columns:
+        return _cls_result(cid, False, "没有可比对的列")
+
+    max_diff, worst = _compare_frames(v.features.iloc[train_positions], frame, columns)
+    if max_diff > TRUNCATION_TOL:
+        hint = ("；特征变换用到了训练集以外的信息——典型原因是向量化器/词表/IDF "
+                "在全量语料上 fit，而不是只在训练集上 fit")
+        return _cls_result(cid, False,
+                           f"训练段 {len(train_positions)} 行特征不一致：{worst} "
+                           f"偏差 {max_diff:.6g}{hint}", elapsed=res.elapsed)
+    return _cls_result(cid, True,
+                       f"全量与仅训练段两次运行，训练段 {len(train_positions)} 行 × "
+                       f"{len(columns)} 列逐行一致（最大偏差 {max_diff:.1e}）",
+                       elapsed=res.elapsed)
+
+
+def _check_prediction_validity_cls(v: "Validator") -> CheckResult:
+    cid = "correctness.prediction_validity"
+    if v.split is None:
+        return _cls_skip(cid, "切分不可用")
+    chain = v.chain
+    if chain is None:
+        return _cls_skip(cid, "fit/predict 未执行")
+    if not chain.ok:
+        if chain.status == "timeout":
+            return _cls_result(cid, False, f"fit/predict 超过时间预算 {v.budget:.0f}s")
+        return _cls_result(cid, False, f"fit/predict 报错: {_tail(chain.error)}", chain.location)
+
+    preds = np.asarray(chain.value).astype(str)
+    n_expected = len(v.split.test_features)
+    if len(preds) != n_expected:
+        return _cls_result(cid, False,
+                           f"predict 返回 {len(preds)} 个值，测试集 {n_expected} 行，长度不一致")
+    if any(x in ("", "nan", "None") for x in preds):
+        return _cls_result(cid, False, "预测里有空值/nan")
+    allowed = set(v.manifest.label.classes or []) | set(v.split.test_truth.unique()) \
+        | set(v.split.train_df[v.manifest.label.column].astype(str).unique())
+    outside = sorted(set(preds) - allowed)
+    if outside:
+        return _cls_result(cid, False,
+                           f"预测出现训练与测试都没见过的类别 {outside}（契约要求输出类别标签）")
+    if len(set(preds)) == 1:
+        return _cls_result(cid, False, f"预测恒为同一类 {preds[0]}（模型未产生有效输出）")
+    dist = pd.Series(preds).value_counts(normalize=True)
+    detail = (f"{len(preds)} 个预测，覆盖 {len(set(preds))} 类；"
+              f"占比 " + "、".join(f"{k} {v_:.2f}" for k, v_ in dist.items()))
+    return _cls_result(cid, True, detail, elapsed=chain.elapsed)
+
+
+def _check_majority_baseline(v: "Validator", previous: list[CheckResult]) -> CheckResult:
+    """功能层的松判据：明显不如「全猜多数类」才算没学到东西。
+
+    严格判据（宏 F1 对标基线）在指标表现模块。
+    """
+    cid = "correctness.naive_baseline"
+    validity = next((r for r in previous if r.id == "correctness.prediction_validity"), None)
+    if validity is None or not validity.passed:
+        return _cls_skip(cid, "预测输出无效，不进行比较")
+    preds = np.asarray(v.chain.value).astype(str)
+    truth = v.split.test_truth.to_numpy().astype(str)
+    acc = metrics.accuracy(truth, preds)
+    majority = metrics.majority_share(v.split.train_df[v.manifest.label.column])
+    detail = (f"准确率 模型 {acc:.3f} / 多数类基线 {majority:.3f}"
+              f"（样本 {len(truth)} 行）；宏 F1 {metrics.macro_f1(truth, preds):.3f}")
+    if acc < majority - CLS_MARGIN:
+        return _cls_result(cid, False,
+                           f"{detail}；低于多数类基线 {100 * (majority - acc):.1f} 个百分点")
+    return _cls_result(cid, True, detail)

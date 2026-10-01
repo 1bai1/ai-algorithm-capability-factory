@@ -222,3 +222,58 @@ def alignment_mask(*arrays: np.ndarray) -> np.ndarray:
         ok = ~pd.isna(np.asarray(arr, dtype=float))
         mask = ok if mask is None else (mask & ok)
     return mask if mask is not None else np.array([], dtype=bool)
+
+
+# --------------------------------------------------- 分类账（文本分类任务）
+def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """准确率。类别不平衡时会骗人，必须与宏 F1、多数类基线一起看。"""
+    t = np.asarray(y_true).astype(str)
+    p = np.asarray(y_pred).astype(str)
+    return float(np.mean(t == p))
+
+
+def macro_f1(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """宏 F1：各类 F1 的算术平均，不按样本数加权，故对小类敏感。"""
+    from sklearn.metrics import f1_score
+    return float(f1_score(np.asarray(y_true).astype(str),
+                          np.asarray(y_pred).astype(str),
+                          average="macro", zero_division=0))
+
+
+def per_class_scores(y_true: np.ndarray, y_pred: np.ndarray) -> list[dict]:
+    """逐类的 precision / recall / f1 / support，供混淆矩阵与报告用。"""
+    from sklearn.metrics import precision_recall_fscore_support
+    t = np.asarray(y_true).astype(str)
+    p = np.asarray(y_pred).astype(str)
+    labels = sorted(set(t) | set(p))
+    pr, rc, f1, sup = precision_recall_fscore_support(
+        t, p, labels=labels, zero_division=0)
+    return [{"label": lab, "precision": float(a), "recall": float(b),
+             "f1": float(c), "support": int(d)}
+            for lab, a, b, c, d in zip(labels, pr, rc, f1, sup)]
+
+
+def confusion_counts(y_true: np.ndarray, y_pred: np.ndarray
+                     ) -> tuple[list[str], list[list[int]]]:
+    """混淆矩阵（行=真实，列=预测）。"""
+    from sklearn.metrics import confusion_matrix
+    t = np.asarray(y_true).astype(str)
+    p = np.asarray(y_pred).astype(str)
+    labels = sorted(set(t) | set(p))
+    matrix = confusion_matrix(t, p, labels=labels)
+    return labels, [[int(v) for v in row] for row in matrix]
+
+
+def class_distribution(values) -> dict[str, float]:
+    """类别占比（用于披露训练/测试的分布是否一致）。"""
+    s = pd.Series(np.asarray(values).astype(str))
+    if not len(s):
+        return {}
+    share = s.value_counts(normalize=True)
+    return {str(k): float(v) for k, v in share.items()}
+
+
+def majority_share(values) -> float:
+    """多数类占比 = 「全猜多数类」基线的准确率。"""
+    dist = class_distribution(values)
+    return max(dist.values()) if dist else float("nan")

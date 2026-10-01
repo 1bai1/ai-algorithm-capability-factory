@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from .. import data, runner
-from ..split import split_features
+from ..split import split_classification, split_features
 from ..report import CheckResult
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -92,21 +92,31 @@ def _check_determinism(v: "Validator") -> CheckResult:
         reason = "超时" if bad.status == "timeout" else "报错"
         return _skip(cid, f"重跑{reason}，无法比对两次结果")
 
-    a = np.asarray(first.value, dtype=float)
-    b = np.asarray(second.value, dtype=float)
+    a = np.asarray(first.value)
+    b = np.asarray(second.value)
     if len(a) != len(b):
         return _result(cid, False, f"两次运行长度不同：{len(a)} vs {len(b)}")
-    mismatch = int(np.sum(~np.isclose(a, b, rtol=0, atol=0, equal_nan=True)))
-    if mismatch:
-        diff = np.abs(a - b)
-        diff = diff[np.isfinite(diff)]
-        max_diff = float(diff.max()) if len(diff) else float("nan")
-        return _result(cid, False,
-                       f"同种子两次运行 {len(a)} 个预测中 {mismatch} 个不一致"
-                       f"（最大偏差 {max_diff:.4g}）；"
-                       f"算法内部疑似有未受种子控制的随机源"
-                       f"（如未设种子的 np.random.default_rng()）",
-                       elapsed=first.elapsed + second.elapsed)
+    if a.dtype.kind in "OUS" or b.dtype.kind in "OUS":     # 分类：类别标签逐条比对
+        mismatch = int(np.sum(a.astype(str) != b.astype(str)))
+        if mismatch:
+            return _result(cid, False,
+                           f"同种子两次运行 {len(a)} 个预测中 {mismatch} 个类别不一致；"
+                           f"算法内部疑似有未受种子控制的随机源",
+                           elapsed=first.elapsed + second.elapsed)
+    else:
+        a = a.astype(float)
+        b = b.astype(float)
+        mismatch = int(np.sum(~np.isclose(a, b, rtol=0, atol=0, equal_nan=True)))
+        if mismatch:
+            diff = np.abs(a - b)
+            diff = diff[np.isfinite(diff)]
+            max_diff = float(diff.max()) if len(diff) else float("nan")
+            return _result(cid, False,
+                           f"同种子两次运行 {len(a)} 个预测中 {mismatch} 个不一致"
+                           f"（最大偏差 {max_diff:.4g}）；"
+                           f"算法内部疑似有未受种子控制的随机源"
+                           f"（如未设种子的 np.random.default_rng()）",
+                           elapsed=first.elapsed + second.elapsed)
     return _result(cid, True,
                    f"同种子两次运行 {len(a)} 个预测完全一致"
                    f"（各 {first.elapsed:.1f}s / {second.elapsed:.1f}s）",
@@ -123,7 +133,11 @@ def _check_small_sample(v: "Validator") -> CheckResult:
 # -------------------------------------------------------------- 坏数据不崩
 def _check_bad_data(v: "Validator") -> CheckResult:
     cid = "stability.bad_data"
-    bad = data.corrupt(v.raw, seed=v.seed)
+    if getattr(v, "task", "time_series") == "classification":
+        bad = data.corrupt_text(v.raw, seed=v.seed,
+                                text_column=v.manifest.text_column)
+    else:
+        bad = data.corrupt(v.raw, seed=v.seed)
     return _run_subset(v, bad, cid, label="注入缺失值并删除若干行后",
                        is_bad=True)
 
@@ -140,9 +154,14 @@ def _run_subset(v: "Validator", sub, cid: str, label: str, is_bad: bool = False)
         return _result(cid, False,
                        f"{label} build_features 返回 {type(feats.value).__name__}，不是 DataFrame")
 
-    cutoff = data.date_cutoff(sub, 0.3 if not is_bad else 0.2)
-    split, error = split_features(feats.value, sub["date"], cutoff,
-                                  min_train=5, min_test=5)
+    if getattr(v, "task", "time_series") == "classification":
+        split, error = split_classification(
+            feats.value, v.manifest.label.column, test_size=0.3, seed=v.seed,
+            min_train=5, min_test=5)
+    else:
+        cutoff = data.date_cutoff(sub, 0.3 if not is_bad else 0.2)
+        split, error = split_features(feats.value, sub["date"], cutoff,
+                                      min_train=5, min_test=5)
     if split is None:
         return _result(cid, False, f"{label} 无法切分: {error}", feats.location)
 
@@ -154,14 +173,22 @@ def _run_subset(v: "Validator", sub, cid: str, label: str, is_bad: bool = False)
         return _result(cid, False,
                        f"{label} fit/predict 报错: {_tail(chain.error)}", chain.location)
 
-    preds = np.asarray(chain.value, dtype=float)
-    if len(preds) != len(split.test_features):
+    raw_preds = np.asarray(chain.value)
+    if len(raw_preds) != len(split.test_features):
         return _result(cid, False,
-                       f"{label} predict 返回 {len(preds)} 个值，测试集 {len(split.test_features)} 行")
-    if not np.isfinite(preds).all():
-        n_bad = int((~np.isfinite(preds)).sum())
-        return _result(cid, False, f"{label} 预测含 {n_bad} 个非有限值")
-    note = "；预测为常数" if preds.max() - preds.min() <= 0 else ""
+                       f"{label} predict 返回 {len(raw_preds)} 个值，"
+                       f"测试集 {len(split.test_features)} 行")
+    if raw_preds.dtype.kind in "OUS":                       # 分类：类别标签
+        if len(set(raw_preds.astype(str))) == 1:
+            note = "；预测为常数"
+        else:
+            note = ""
+    else:
+        preds = raw_preds.astype(float)
+        if not np.isfinite(preds).all():
+            n_bad = int((~np.isfinite(preds)).sum())
+            return _result(cid, False, f"{label} 预测含 {n_bad} 个非有限值")
+        note = "；预测为常数" if preds.max() - preds.min() <= 0 else ""
     return _result(cid, True,
                    f"{label} 全链路跑通（训练 {len(split.train_df)} 行，"
                    f"预测 {len(split.test_features)} 行）{note}",

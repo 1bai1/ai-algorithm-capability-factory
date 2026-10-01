@@ -27,12 +27,13 @@ class Split:
     test_positions: np.ndarray
 
     @property
-    def train_dates(self) -> pd.Series:
-        return self.train_df["date"]
+    def train_dates(self) -> pd.Series | None:
+        """时序任务才有 date 列；分类任务返回 None。"""
+        return self.train_df["date"] if "date" in self.train_df.columns else None
 
     @property
-    def test_dates(self) -> pd.Series:
-        return self.test_features["date"]
+    def test_dates(self) -> pd.Series | None:
+        return self.test_features["date"] if "date" in self.test_features.columns else None
 
 
 def split_features(frame: pd.DataFrame, dates: pd.Series, cutoff: pd.Timestamp,
@@ -65,5 +66,51 @@ def split_features(frame: pd.DataFrame, dates: pd.Series, cutoff: pd.Timestamp,
         return None, f"训练段可用行数 {len(train_df)} 少于下限 {min_train}"
     if len(test_features) < min_test:
         return None, f"样本外行数 {len(test_features)} 少于下限 {min_test}"
+    return Split(train_df=train_df, test_features=test_features,
+                 test_truth=test_truth, test_positions=test_positions), None
+
+
+def split_classification(df: pd.DataFrame, label_column: str = "label",
+                         test_size: float = 0.2, seed: int = 42,
+                         min_train: int = 50, min_test: int = 20
+                         ) -> tuple[Split | None, str | None]:
+    """分类任务的分层随机切分。
+
+    与 split_features（时序）的区别：这里不按时间切，而是**分层随机**切分，
+    保证训练集与测试集的类别比例一致——这是文本分类的通行纪律
+    （见复用池《文本分类基准数据集与划分纪律》）。
+
+    划分方式与随机种子会原样写进报告 meta：评测口径卡要求「划分方式」必须披露，
+    否则不同方法的数字不可比。
+    """
+    if label_column not in df.columns:
+        return None, f"数据缺少标签列 {label_column}"
+    if len(df) < min_train + min_test:
+        return None, f"样本量 {len(df)} 不足以切分（下限 {min_train + min_test}）"
+
+    from sklearn.model_selection import train_test_split
+
+    y = df[label_column].astype(str)
+    counts = y.value_counts()
+    stratify = y if counts.min() >= 2 else None      # 过小的类无法分层
+
+    idx_train, idx_test = train_test_split(
+        df.index.to_numpy(), test_size=test_size, random_state=seed, stratify=stratify)
+
+    train_df = df.loc[idx_train].reset_index(drop=True)
+    test_df = df.loc[idx_test].reset_index(drop=True)
+    test_positions = np.asarray(idx_test)
+    test_features = test_df.drop(columns=[label_column]).reset_index(drop=True)
+    test_truth = test_df[label_column].astype(str).reset_index(drop=True)
+
+    if len(train_df) < min_train:
+        return None, f"训练集 {len(train_df)} 行少于下限 {min_train}"
+    if len(test_features) < min_test:
+        return None, f"测试集 {len(test_features)} 行少于下限 {min_test}"
+
+    missing = sorted(set(y) - set(test_truth.unique()))
+    if missing:
+        return None, f"测试集缺少类别 {missing}，请增大样本量或取消分层"
+
     return Split(train_df=train_df, test_features=test_features,
                  test_truth=test_truth, test_positions=test_positions), None

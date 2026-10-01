@@ -91,7 +91,11 @@ def _chain_worker(queue, algo_dir: str, module_name: str, train_df, test_df, see
         module = contract.load_algorithm(algo_dir, module_name)
         model = getattr(module, "fit")(train_df)
         preds = getattr(module, "predict")(model, test_df)
-        array = np.asarray(preds, dtype=float).ravel()
+        array = np.asarray(preds)
+        if array.dtype.kind in "OUS":        # 字符串/对象：分类任务的类别标签
+            array = array.astype(str).ravel()
+        else:
+            array = np.asarray(array, dtype=float).ravel()
         queue.put({"status": "ok", "value": array,
                    "elapsed": time.perf_counter() - started})
     except BaseException:

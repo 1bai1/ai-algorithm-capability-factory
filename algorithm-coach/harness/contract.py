@@ -51,6 +51,10 @@ MANIFEST_FILENAME = "manifest.json"
 LABEL_COLUMN = "label"
 RETURN_TYPES = ("simple", "log")
 
+# 支持的任务类型
+TASKS = ("time_series", "classification")
+DEFAULT_TEXT_COLUMN = "text"
+
 # 函数名 -> harness 调用时传入的位置参数个数
 REQUIRED_FUNCS: dict[str, int] = {
     "build_features": 1,
@@ -65,30 +69,53 @@ DEFAULT_COST_PER_SIDE = 0.0005      # 单边手续费 + 滑点，进出各收一
 
 @dataclass
 class LabelSpec:
-    """标签定义：horizon 与收益类型。"""
+    """标签定义。
 
-    horizon: int
+    - 时序任务（time_series）：horizon + type（simple/log），harness 用收盘价独立重算对账
+    - 分类任务（classification）：column（标签列名），可选 classes（允许的类别集合）
+    """
+
+    column: str = LABEL_COLUMN
+    horizon: int | None = None
     type: str = "simple"
+    classes: list[str] | None = None
 
 
 @dataclass
 class Manifest:
     """manifest.json 的解析结果。"""
 
-    symbol: str
+    task: str
+    subject: str                    # 对象标识：标的代码 / 数据集名
     label: LabelSpec
+    text_column: str = DEFAULT_TEXT_COLUMN
     seed: int = DEFAULT_SEED
     budget_seconds: int = DEFAULT_BUDGET_SECONDS
     cost_per_side: float = DEFAULT_COST_PER_SIDE
 
+    @property
+    def symbol(self) -> str:
+        """兼容旧字段名（时序任务老清单里写的是 symbol）。"""
+        return self.subject
+
     def to_dict(self) -> dict:
-        return {
-            "symbol": self.symbol,
-            "label": {"horizon": self.label.horizon, "type": self.label.type},
+        label: dict = {"column": self.label.column}
+        if self.task == "time_series":
+            label.update({"horizon": self.label.horizon, "type": self.label.type})
+        elif self.label.classes:
+            label["classes"] = self.label.classes
+        d = {
+            "task": self.task,
+            "subject": self.subject,
+            "label": label,
             "seed": self.seed,
             "budget_seconds": self.budget_seconds,
-            "cost_per_side": self.cost_per_side,
         }
+        if self.task == "classification":
+            d["text_column"] = self.text_column
+        else:
+            d["cost_per_side"] = self.cost_per_side
+        return d
 
 
 def _is_int(value: object) -> bool:
@@ -112,27 +139,54 @@ def parse_manifest(path: str | Path) -> tuple[Manifest | None, list[str]]:
 
     errors: list[str] = []
 
-    symbol = raw.get("symbol")
-    if not isinstance(symbol, str) or not symbol.strip():
-        errors.append("symbol 必须是非空字符串")
+    task = raw.get("task", "time_series")
+    if task not in TASKS:
+        errors.append(f"task 必须是 {TASKS} 之一，当前为 {task!r}")
+        task = "time_series"
 
-    # label 支持嵌套写法 {"label": {"horizon":5,"type":"simple"}}
-    # 也兼容扁平写法 {"horizon":5, "return_type":"simple"}
+    subject = raw.get("subject", raw.get("symbol"))
+    if not isinstance(subject, str) or not subject.strip():
+        errors.append("subject 必须是非空字符串（旧清单可用 symbol）")
+
+    # label 支持嵌套写法，也兼容扁平写法（{"horizon":5, "return_type":"simple"}）
     label_raw = raw.get("label")
     if label_raw is None:
         label_raw = raw
     elif not isinstance(label_raw, dict):
-        errors.append("label 必须是 JSON 对象（含 horizon / type）")
+        errors.append("label 必须是 JSON 对象")
         label_raw = {}
 
-    horizon = label_raw.get("horizon")
-    if not _is_int(horizon) or horizon < 1:
-        errors.append("label.horizon 必须是 >=1 的整数")
-        horizon = None
+    if task == "time_series":
+        horizon = label_raw.get("horizon")
+        if not _is_int(horizon) or horizon < 1:
+            errors.append("label.horizon 必须是 >=1 的整数")
+            horizon = None
+        ret_type = label_raw.get("type", raw.get("return_type", "simple"))
+        if ret_type not in RETURN_TYPES:
+            errors.append(f"label.type 必须是 {RETURN_TYPES} 之一，当前为 {ret_type!r}")
+        label = LabelSpec(column=LABEL_COLUMN, horizon=horizon, type=ret_type)
+    else:
+        column = label_raw.get("column", LABEL_COLUMN)
+        if not isinstance(column, str) or not column.strip():
+            errors.append("label.column 必须是非空字符串")
+            column = LABEL_COLUMN
+        classes = label_raw.get("classes")
+        if classes is not None:
+            ok = (isinstance(classes, list) and classes and
+                  all(isinstance(c, (str, int, float)) and not isinstance(c, bool)
+                      for c in classes))
+            if not ok:
+                errors.append("label.classes 必须是类别取值的非空数组")
+                classes = None
+            else:
+                classes = [str(c) for c in classes]
+        label = LabelSpec(column=column, classes=classes)
 
-    ret_type = label_raw.get("type", raw.get("return_type", "simple"))
-    if ret_type not in RETURN_TYPES:
-        errors.append(f"label.type 必须是 {RETURN_TYPES} 之一，当前为 {ret_type!r}")
+    text_column = raw.get("text_column", DEFAULT_TEXT_COLUMN)
+    if task == "classification" and (not isinstance(text_column, str)
+                                     or not text_column.strip()):
+        errors.append("text_column 必须是非空字符串（分类任务的文本列名）")
+        text_column = DEFAULT_TEXT_COLUMN
 
     seed = raw.get("seed", DEFAULT_SEED)
     if not _is_int(seed):
@@ -151,8 +205,8 @@ def parse_manifest(path: str | Path) -> tuple[Manifest | None, list[str]]:
 
     if errors:
         return None, errors
-    return Manifest(symbol=symbol, label=LabelSpec(horizon=horizon, type=ret_type),
-                    seed=seed, budget_seconds=budget,
+    return Manifest(task=task, subject=subject, label=label,
+                    text_column=text_column, seed=seed, budget_seconds=budget,
                     cost_per_side=float(cost)), []
 
 
