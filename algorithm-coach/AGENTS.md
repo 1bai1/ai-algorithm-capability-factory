@@ -100,8 +100,29 @@ matplotlib——装包也不会落到 math 环境里。缺依赖时装进 math �
 
 ## 验证规则
 
-- 不跑通不算完成。在 `harness/` 中真实执行，不得声称成功。
-- harness 以**结构化 JSON** 回报结果：要能区分语法错误、运行时错误、超时、接口违规、
-  数据泄漏、指标不达标，并给出出错位置。据结构化结果决定修复还是通过，不要靠猜 traceback。
-- 一次任务的产物写入 `knowledge/任务池/<日期>_<股票代码>_<任务名>/`，不覆盖历史任务。
-- 失败要如实记录到该任务目录，并按上面的委派规则决定是否沉淀为失败经验卡。
+**不跑通不算完成。** 代码写完只是半步，跑出全绿报告才算交付；不得声称成功。
+
+**算法契约**（全文在 `harness/contract.py`）：一个任务目录里放 `algorithm.py` + `manifest.json`。
+
+| 项 | 要求 |
+|---|---|
+| `build_features(df)` | 行数不变：预热期 NaN 行保留，不删行、不动 `date` 列；必须含 `label` 列 |
+| `fit(train_df)` | 只吃训练段（含 `label` 列） |
+| `predict(model, test_df)` | 长度 = 测试集行数；`test_df` 已剥掉 label 列 |
+| `manifest.json` | 必填 `symbol`、`label.horizon`、`label.type`（`simple`/`log`）；可选 `seed`、`budget_seconds`、`cost_per_side`（单边费率，默认 0.0005） |
+| 切分与阈值 | 由 harness 控制，算法不要自己切分；策略阈值取训练段预测中位数，别用默认 0 |
+
+**验收命令**（四个模块：接口规范＝闸门、功能正确性、指标表现、运行稳定性）：
+
+```bash
+D:/environment/miniconda3/envs/math/python.exe -m harness validate <算法目录> \
+  --data <日线csv> --cutoff <YYYY-MM-DD> --out knowledge/任务池/<日期>_<代码>_<任务名>/
+```
+
+**按报告修，不要靠猜**：产物目录里有 `report.json`（机器读）与 `report.md`（人读）；
+每条未通过项带 `detail`、出错位置 `location`、依据知识卡 `kb_card`，
+足以区分语法错误、运行时错误、超时、契约违规、数据泄漏与指标不达标。
+改完重跑同一条命令，直到通过——过不了就如实记录，不粉饰。
+
+一次任务的产物写入 `knowledge/任务池/<日期>_<股票代码>_<任务名>/`，不覆盖历史任务；
+失败按上面的委派规则决定是否沉淀为失败经验卡。
