@@ -6,11 +6,12 @@
 检查项
 ------
 - 提交物齐全   algorithm.py + manifest.json 都在
-- manifest 合法 字段类型正确（symbol / label.horizon / label.type / seed / budget）
+- manifest 合法 字段类型正确（subject / label.column / label.classes / seed / budget）
 - 模块可导入   能 import，语法错误与导入错误在此拦下，带行号
 - 契约函数齐全 build_features / fit / predict 三个都有
 - 函数签名正确 能以契约规定的位置参数个数调用
-- 冒烟运行     60 行小数据上真跑一遍 build_features → fit → predict
+- 冒烟运行     小数据上真跑一遍 build_features → fit → predict
+- 交付物完整性 run.py 能独立跑、README 的示例命令指向真实数据、文档开头讲清是什么
 """
 from __future__ import annotations
 
@@ -85,15 +86,10 @@ def run(v: "Validator") -> list[CheckResult]:
         results += _all_skipped("manifest 不合法，跳过", from_index=2)
         return results
     v.manifest = manifest
-    if manifest.task == "classification":
-        detail = (f"task=classification, subject={manifest.subject}, "
-                  f"标签列={manifest.label.column}、"
-                  f"声明 {len(manifest.label.classes or [])} 类，文本列={manifest.text_column}，"
-                  f"seed={manifest.seed}, budget={manifest.budget_seconds}s")
-    else:
-        detail = (f"task=time_series, subject={manifest.subject}, "
-                  f"label={manifest.label.type} h={manifest.label.horizon}, "
-                  f"seed={manifest.seed}, budget={manifest.budget_seconds}s")
+    detail = (f"task=classification, subject={manifest.subject}, "
+              f"标签列={manifest.label.column}、"
+              f"声明 {len(manifest.label.classes or [])} 类，文本列={manifest.text_column}，"
+              f"seed={manifest.seed}, budget={manifest.budget_seconds}s")
     results.append(_result("interface.manifest", True, detail))
 
     # ---- 3~5. 导入 + 函数 + 签名（同一个子进程里一次完成）

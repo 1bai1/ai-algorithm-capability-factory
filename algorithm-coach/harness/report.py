@@ -129,26 +129,16 @@ class Report:
         m = self.meta
         lines += [
             f"- 生成时间：{m.get('timestamp', '-')}",
-            f"- 任务类型：{m.get('task', 'time_series')}",
+            f"- 任务类型：{m.get('task', 'classification')}",
             f"- 算法目录：`{m.get('algo_dir', '-')}`",
             f"- 数据文件：`{m.get('data_path', '-')}`",
         ]
-        if m.get("task") == "classification":
-            classes = m.get("classes") or []
-            lines.append(
-                f"- 数据集：{m.get('data_rows', '-')} 行 ｜ {len(classes)} 类 "
-                f"（多数类占比 {m.get('majority_share') or 0:.3f}）"
-                f"　划分：{m.get('split', '-')}（seed={m.get('seed', '-')}）"
-                f"　训练 {m.get('train_rows', '-')} / 测试 {m.get('test_rows', '-')} 行")
-        else:
-            lines += [
-                f"- 数据区间：{m.get('data_start', '-')} ~ {m.get('data_end', '-')}"
-                f"（{m.get('data_rows', '-')} 行）",
-                f"- 截止日：{m.get('cutoff', '-')}"
-                f"　训练段 {m.get('train_start', '-')} ~ {m.get('train_end', '-')}"
-                f"　样本外 {m.get('test_start', '-')} ~ {m.get('test_end', '-')}"
-                f"（{m.get('test_rows', '-')} 行）",
-            ]
+        classes = m.get("classes") or []
+        lines.append(
+            f"- 数据集：{m.get('data_rows', '-')} 行 ｜ {len(classes)} 类 "
+            f"（多数类占比 {m.get('majority_share') or 0:.3f}）"
+            f"　划分：{m.get('split', '-')}（seed={m.get('seed', '-')}）"
+            f"　训练 {m.get('train_rows', '-')} / 测试 {m.get('test_rows', '-')} 行")
         manifest = m.get("manifest")
         if manifest:
             lines.append(f"- manifest：`{json.dumps(manifest, ensure_ascii=False)}`")
@@ -194,76 +184,9 @@ class Report:
     # ------------------------------------------------------- 指标表现明细
     def _metrics_markdown(self) -> list[str]:
         m = self.metrics
-        if m.get("setup", {}).get("task") == "classification":
-            return self._cls_metrics_markdown(m)
-        setup = m.get("setup", {})
-        lines = [
-            f"> 口径：{setup.get('rule', '-')}；horizon={setup.get('horizon', '-')}；"
-            f"单边成本 {100 * setup.get('cost_per_side', 0):.3f}%；"
-            f"阈值（训练段预测中位数）{_num(setup.get('threshold'), 6)}",
-            "",
-        ]
+        return self._cls_metrics_markdown(m)
 
-        p = m.get("prediction")
-        if p:
-            lines += [
-                "### 精度账",
-                "",
-                "| 指标 | 数值 | 对照 |",
-                "|---|---|---|",
-                f"| RMSE | {100 * p['rmse']:.2f}% | 零预测基线 {100 * p['rmse_zero_baseline']:.2f}% |",
-                f"| 方向准确率 | {p['direction_accuracy']:.3f} | "
-                f"全猜涨 {p['baseline_up']:.3f} / 明日=今日 {p['baseline_persistence']:.3f} |",
-                f"| IC（Spearman 秩相关） | {_num(p['ic'])} | — |",
-                f"| 样本外行数 | {p['rows']} | — |",
-                "",
-            ]
-
-        t, b, bm = m.get("trading"), m.get("benchmark", {}).get("buy_hold", {}), m.get("benchmark", {})
-        if t:
-            lines += [
-                "### 交易账（样本外，策略 vs 买入持有）",
-                "",
-                "| 指标 | 策略 | 买入持有 |",
-                "|---|---|---|",
-                f"| 累计收益率 | {_pct(t['cum_return'])} | {_pct(b.get('cum_return'))} |",
-                f"| 年化收益率 | {_pct(t['annual_return'])} | {_pct(b.get('annual_return'))} |",
-                f"| 年化波动率（辅助） | {_pct(t['annual_vol'], signed=False)} | "
-                f"{_pct(b.get('annual_vol'), signed=False)} |",
-                f"| 夏普比率 | {_num(t['sharpe'], 2)} | {_num(b.get('sharpe'), 2)} |",
-                f"| 最大回撤 | {_pct(t['max_drawdown'])} | {_pct(b.get('max_drawdown'))} |",
-                f"| 胜率（按笔） | {_num(t['win_rate'])} | — |",
-                f"| 盈亏比（按笔） | {_num(t['profit_loss_ratio'], 2)} | — |",
-                f"| 年化双边换手 | {_num(t.get('turnover_annual'), 0)} | — |",
-                f"| 交易笔数（辅助） | {t['trades']} | 1 |",
-                f"| 超额收益 | {_pct(bm.get('excess_return'))} | — |",
-                f"| 夏普差 | {_num(bm.get('sharpe_diff'), 2)} | — |",
-                "",
-            ]
-
-        r = m.get("robustness")
-        if r:
-            scan = r.get("cost_scan", [])
-            if scan:
-                lines += ["### 成本敏感度", "", "| 成本倍数 | 单边费率 | 累计收益 | 夏普 | 最大回撤 |",
-                          "|---|---|---|---|---|"]
-                for s in scan:
-                    lines.append(f"| ×{s['multiplier']:g} | {100 * s['cost_per_side']:.3f}% | "
-                                 f"{_pct(s['cum_return'])} | {_num(s['sharpe'], 2)} | "
-                                 f"{_pct(s['max_drawdown'])} |")
-                lines.append("")
-            ins, outs, gap = r.get("in_sample", {}), r.get("out_of_sample", {}), r.get("gap", {})
-            if ins or outs:
-                lines += ["### 样本内外差距", "", "| 口径 | 方向准确率 | RMSE |", "|---|---|---|",
-                          f"| 样本内（训练段） | {_num(ins.get('direction_accuracy'))} | "
-                          f"{_pct(ins.get('rmse'), 2, signed=False)} |",
-                          f"| 样本外 | {_num(outs.get('direction_accuracy'))} | "
-                          f"{_pct(outs.get('rmse'), 2, signed=False)} |",
-                          f"| 差距 | {_num(gap.get('direction_accuracy'))} | "
-                          f"{_pct(gap.get('rmse'), 2)} |", ""]
-        return lines
-
-    # --------------------------------------------- 指标表现明细（分类任务）
+    # ------------------------------------------------------- 指标表现明细
     def _cls_metrics_markdown(self, m: dict) -> list[str]:
         s, p, b, d, o = (m["setup"], m["prediction"], m["baselines"],
                          m["distribution"], m["overfit"])

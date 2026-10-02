@@ -20,7 +20,7 @@
 ## 调用方式
 
 - 独立运行入口：`python run.py --data <csv> --out <结果csv>`（读数据 → 训练 → 预测 → 写结果，不依赖 harness）。
-- 本项目 harness 验收（分类任务不加 `--cutoff`）：
+- 本项目 harness 验收：
   `D:/environment/miniconda3/envs/math/python.exe -m harness validate knowledge/任务池/2026-10-02_agnews_四分类/generated --data examples/text_cls_demo/data/agnews_sample.csv --out knowledge/任务池/2026-10-02_agnews_四分类/validation/`
 - 产物路径：`knowledge/任务池/2026-10-02_agnews_四分类/generated/`；选型实验脚本在该任务 `experiments/select_model.py` 与 `experiments/select_nb.py`。
 

@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from .. import data, runner
-from ..split import split_classification, split_features
+from ..split import split_classification
 from ..report import CheckResult
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -133,12 +133,9 @@ def _check_small_sample(v: "Validator") -> CheckResult:
 # -------------------------------------------------------------- 坏数据不崩
 def _check_bad_data(v: "Validator") -> CheckResult:
     cid = "stability.bad_data"
-    if getattr(v, "task", "time_series") == "classification":
-        bad = data.corrupt_text(v.raw, seed=v.seed,
-                                text_column=v.manifest.text_column)
-    else:
-        bad = data.corrupt(v.raw, seed=v.seed)
-    return _run_subset(v, bad, cid, label="注入缺失值并删除若干行后",
+    bad = data.corrupt_text(v.raw, seed=v.seed,
+                            text_column=v.manifest.text_column)
+    return _run_subset(v, bad, cid, label="把部分文本置空、塞入无信息短文本并删掉若干行后",
                        is_bad=True)
 
 
@@ -154,14 +151,9 @@ def _run_subset(v: "Validator", sub, cid: str, label: str, is_bad: bool = False)
         return _result(cid, False,
                        f"{label} build_features 返回 {type(feats.value).__name__}，不是 DataFrame")
 
-    if getattr(v, "task", "time_series") == "classification":
-        split, error = split_classification(
-            feats.value, v.manifest.label.column, test_size=0.3, seed=v.seed,
-            min_train=5, min_test=5)
-    else:
-        cutoff = data.date_cutoff(sub, 0.3 if not is_bad else 0.2)
-        split, error = split_features(feats.value, sub["date"], cutoff,
-                                      min_train=5, min_test=5)
+    split, error = split_classification(
+        feats.value, v.manifest.label.column, test_size=0.3, seed=v.seed,
+        min_train=5, min_test=5)
     if split is None:
         return _result(cid, False, f"{label} 无法切分: {error}", feats.location)
 

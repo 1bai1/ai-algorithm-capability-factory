@@ -3,8 +3,7 @@
 生成的算法目录必须包含两个文件::
 
     <algo_dir>/algorithm.py    入口模块，定义 build_features / fit / predict
-    <algo_dir>/manifest.json   声明标的、标签定义、随机种子、时间预算与成本口径
-                               （可选字段 cost_per_side：单边手续费+滑点，默认 0.0005）
+    <algo_dir>/manifest.json   声明对象、标签列与类别、随机种子、时间预算
 
 交付形态（两层，都要齐）
 ------------------------
@@ -26,25 +25,22 @@ harness 只调用 ``algorithm.py`` 里的三个函数，**从不调用 run.py**�
 三个函数
 --------
 ``build_features(df) -> DataFrame``
-    输入原始日线（列含 date/open/high/low/close/volume 等）。
+    输入原始文本表（至少含 manifest 声明的文本列与标签列）。
     输出**同长度、同顺序**的特征表：可以新增特征列，但不得增删行、
-    不得改动 date 列。必须包含标签列（默认列名 ``label``）。
-    预热期的 NaN 行允许保留——harness 自己负责在构造训练集时丢弃。
+    不得改动文本列与标签列。
 
 ``fit(train_df) -> model``
-    只用传入的 train_df（含特征列与 label 列）训练，返回任意模型对象。
+    只用传入的 train_df（含特征列与标签列）训练，返回任意模型对象。
 
 ``predict(model, test_df) -> ndarray``
     长度必须等于 ``len(test_df)``，与 test_df 行序对齐。
-    test_df 已剥掉 label 列——预测时拿不到答案。
+    test_df 已剥掉标签列——预测时拿不到答案。
 
 标签定义
 --------
-manifest 里声明 ``label.horizon`` 与 ``label.type``，harness 用收盘价**独立重算**
-逐行核对（这是「标签口径对账」检查）::
-
-    simple:  close.shift(-h) / close - 1
-    log:     log(close.shift(-h) / close)
+分类任务的标签就是 manifest 里 ``label.column`` 那一列，取值集合由
+``label.classes`` 声明（可选，声明后 harness 会核对预测是否落在集合内）。
+切分由 harness 控制：分层随机，类别比例与随机种子原样写进报告。
 
 随机性约定
 ----------
@@ -66,10 +62,11 @@ from typing import Callable
 ALGO_FILENAME = "algorithm.py"
 MANIFEST_FILENAME = "manifest.json"
 LABEL_COLUMN = "label"
-RETURN_TYPES = ("simple", "log")
 
-# 支持的任务类型
-TASKS = ("time_series", "classification")
+# 当前只支持文本分类一种任务类型。
+# 要加新类型（比如换场景），在这里加取值，再补一条数据加载、切分与检查路径；
+# 其余部分（契约三函数、报告骨架、四个模块）是任务无关的。
+TASKS = ("classification",)
 DEFAULT_TEXT_COLUMN = "text"
 
 # 函数名 -> harness 调用时传入的位置参数个数
@@ -81,20 +78,13 @@ REQUIRED_FUNCS: dict[str, int] = {
 
 DEFAULT_SEED = 42
 DEFAULT_BUDGET_SECONDS = 300
-DEFAULT_COST_PER_SIDE = 0.0005      # 单边手续费 + 滑点，进出各收一次
 
 
 @dataclass
 class LabelSpec:
-    """标签定义。
-
-    - 时序任务（time_series）：horizon + type（simple/log），harness 用收盘价独立重算对账
-    - 分类任务（classification）：column（标签列名），可选 classes（允许的类别集合）
-    """
+    """标签定义：列名 + 可选的类别集合。"""
 
     column: str = LABEL_COLUMN
-    horizon: int | None = None
-    type: str = "simple"
     classes: list[str] | None = None
 
 
@@ -103,36 +93,24 @@ class Manifest:
     """manifest.json 的解析结果。"""
 
     task: str
-    subject: str                    # 对象标识：标的代码 / 数据集名
+    subject: str                    # 对象标识：数据集名
     label: LabelSpec
     text_column: str = DEFAULT_TEXT_COLUMN
     seed: int = DEFAULT_SEED
     budget_seconds: int = DEFAULT_BUDGET_SECONDS
-    cost_per_side: float = DEFAULT_COST_PER_SIDE
-
-    @property
-    def symbol(self) -> str:
-        """兼容旧字段名（时序任务老清单里写的是 symbol）。"""
-        return self.subject
 
     def to_dict(self) -> dict:
         label: dict = {"column": self.label.column}
-        if self.task == "time_series":
-            label.update({"horizon": self.label.horizon, "type": self.label.type})
-        elif self.label.classes:
+        if self.label.classes:
             label["classes"] = self.label.classes
-        d = {
+        return {
             "task": self.task,
             "subject": self.subject,
             "label": label,
+            "text_column": self.text_column,
             "seed": self.seed,
             "budget_seconds": self.budget_seconds,
         }
-        if self.task == "classification":
-            d["text_column"] = self.text_column
-        else:
-            d["cost_per_side"] = self.cost_per_side
-        return d
 
 
 def _is_int(value: object) -> bool:
@@ -156,53 +134,41 @@ def parse_manifest(path: str | Path) -> tuple[Manifest | None, list[str]]:
 
     errors: list[str] = []
 
-    task = raw.get("task", "time_series")
+    task = raw.get("task", "classification")
     if task not in TASKS:
         errors.append(f"task 必须是 {TASKS} 之一，当前为 {task!r}")
-        task = "time_series"
+        task = "classification"
 
-    subject = raw.get("subject", raw.get("symbol"))
+    subject = raw.get("subject")
     if not isinstance(subject, str) or not subject.strip():
-        errors.append("subject 必须是非空字符串（旧清单可用 symbol）")
+        errors.append("subject 必须是非空字符串")
 
-    # label 支持嵌套写法，也兼容扁平写法（{"horizon":5, "return_type":"simple"}）
     label_raw = raw.get("label")
     if label_raw is None:
-        label_raw = raw
+        label_raw = {}
     elif not isinstance(label_raw, dict):
         errors.append("label 必须是 JSON 对象")
         label_raw = {}
 
-    if task == "time_series":
-        horizon = label_raw.get("horizon")
-        if not _is_int(horizon) or horizon < 1:
-            errors.append("label.horizon 必须是 >=1 的整数")
-            horizon = None
-        ret_type = label_raw.get("type", raw.get("return_type", "simple"))
-        if ret_type not in RETURN_TYPES:
-            errors.append(f"label.type 必须是 {RETURN_TYPES} 之一，当前为 {ret_type!r}")
-        label = LabelSpec(column=LABEL_COLUMN, horizon=horizon, type=ret_type)
-    else:
-        column = label_raw.get("column", LABEL_COLUMN)
-        if not isinstance(column, str) or not column.strip():
-            errors.append("label.column 必须是非空字符串")
-            column = LABEL_COLUMN
-        classes = label_raw.get("classes")
-        if classes is not None:
-            ok = (isinstance(classes, list) and classes and
-                  all(isinstance(c, (str, int, float)) and not isinstance(c, bool)
-                      for c in classes))
-            if not ok:
-                errors.append("label.classes 必须是类别取值的非空数组")
-                classes = None
-            else:
-                classes = [str(c) for c in classes]
-        label = LabelSpec(column=column, classes=classes)
+    column = label_raw.get("column", LABEL_COLUMN)
+    if not isinstance(column, str) or not column.strip():
+        errors.append("label.column 必须是非空字符串")
+        column = LABEL_COLUMN
+    classes = label_raw.get("classes")
+    if classes is not None:
+        ok = (isinstance(classes, list) and classes and
+              all(isinstance(c, (str, int, float)) and not isinstance(c, bool)
+                  for c in classes))
+        if not ok:
+            errors.append("label.classes 必须是类别取值的非空数组")
+            classes = None
+        else:
+            classes = [str(c) for c in classes]
+    label = LabelSpec(column=column, classes=classes)
 
     text_column = raw.get("text_column", DEFAULT_TEXT_COLUMN)
-    if task == "classification" and (not isinstance(text_column, str)
-                                     or not text_column.strip()):
-        errors.append("text_column 必须是非空字符串（分类任务的文本列名）")
+    if not isinstance(text_column, str) or not text_column.strip():
+        errors.append("text_column 必须是非空字符串（文本列名）")
         text_column = DEFAULT_TEXT_COLUMN
 
     seed = raw.get("seed", DEFAULT_SEED)
@@ -215,16 +181,11 @@ def parse_manifest(path: str | Path) -> tuple[Manifest | None, list[str]]:
         errors.append("budget_seconds 必须是 >=1 的整数")
         budget = DEFAULT_BUDGET_SECONDS
 
-    cost = raw.get("cost_per_side", DEFAULT_COST_PER_SIDE)
-    if isinstance(cost, bool) or not isinstance(cost, (int, float)) or cost < 0:
-        errors.append("cost_per_side 必须是 >=0 的数字（单边费率，含手续费与滑点）")
-        cost = DEFAULT_COST_PER_SIDE
-
     if errors:
         return None, errors
     return Manifest(task=task, subject=subject, label=label,
-                    text_column=text_column, seed=seed, budget_seconds=budget,
-                    cost_per_side=float(cost)), []
+                    text_column=text_column, seed=seed,
+                    budget_seconds=budget), []
 
 
 def load_algorithm(algo_dir: str | Path, module_name: str = "algorithm") -> ModuleType:

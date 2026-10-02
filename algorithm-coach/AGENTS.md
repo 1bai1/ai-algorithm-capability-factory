@@ -153,10 +153,10 @@ matplotlib——装包也不会落到 math 环境里。缺依赖时装进 math �
 
 **不跑通不算完成。** 代码写完只是半步，跑出全绿报告才算交付；不得声称成功。
 
-> **两种任务类型都支持**，由 `manifest.task` 决定用哪套契约与判据：
-> `time_series`（默认）用时序契约 + 回测账；`classification` 用分类契约 + 分类账
-> （准确率 / 宏 F1 / 混淆矩阵，对标多数类基线与 harness 自带的 TF-IDF+线性参考基线）。
-> 明细见 `harness/contract.py` 与 `harness/checks/`。
+> **当前只支持文本分类一种任务类型**（`manifest.task = classification`）。
+> 判据是分类账：准确率 / 宏 F1 / 混淆矩阵，对标多数类基线与 harness 自带的
+> TF-IDF+线性参考基线。明细见 `harness/contract.py`、`harness/checks/` 与
+> `harness/README.md`（四模块 19 项）。
 
 **算法契约**（全文在 `harness/contract.py`）：**两层都要齐**。
 
@@ -177,9 +177,9 @@ matplotlib——装包也不会落到 math 环境里。缺依赖时装进 math �
 | `build_features(df)` | 行数不变、不删行；**只做逐行变换，不许"学"任何东西**（词表/IDF/均值/分位数都要放到 `fit` 里）；必须含标签列 |
 | `fit(train_df)` | 只吃训练段（含 `label` 列） |
 | `predict(model, test_df)` | 长度 = 测试集行数；`test_df` 已剥掉 label 列 |
-| `manifest.json` | 必填 `subject`；`task` 取 `time_series`（默认）或 `classification`。时序：`label.horizon`、`label.type`（`simple`/`log`）、可选 `cost_per_side`；分类：`label.column`、`label.classes`、`text_column`。公共可选 `seed`、`budget_seconds` |
-| 切分 | 由 harness 控制：时序按日期切，分类按分层随机切（带固定 seed）；算法不要自己切分 |
-| 阈值/基线 | 时序：策略阈值取训练段预测中位数（别用默认 0）；分类：必须报宏 F1，并与多数类基线、TF-IDF+线性参考基线对照 |
+| `manifest.json` | 必填 `subject`；`task` 固定 `classification`；`label.column`（标签列）、`label.classes`（类别集合，可选）、`text_column`（文本列）；可选 `seed`、`budget_seconds` |
+| 切分 | 由 harness 控制：**分层随机**（带固定 seed），算法不要自己切分 |
+| 基线 | 必须报宏 F1，并与多数类基线、harness 自带的 TF-IDF+线性参考基线对照——"比基线好"要有调过的、可比的基线作陪衬 |
 
 **验收命令**（四个模块：接口规范＝闸门、功能正确性、指标表现、运行稳定性）：
 
@@ -187,7 +187,7 @@ matplotlib——装包也不会落到 math 环境里。缺依赖时装进 math �
 D:/environment/miniconda3/envs/math/python.exe -m harness validate knowledge/任务池/<日期>_<对象>_<任务名>/generated --data <数据csv> --out knowledge/任务池/<日期>_<对象>_<任务名>/validation/
 ```
 
-（写成一行：本机 shell 工具是 powershell，反斜杠续行在它那里不成立。`--cutoff` 只有时序任务用，分类任务不加。）
+（写成一行：本机 shell 工具是 powershell，反斜杠续行在它那里不成立。）
 
 **按报告修，不要靠猜**：产物目录里有 `report.json`（机器读）与 `report.md`（人读）；
 每条未通过项带 `detail`、出错位置 `location`、依据知识卡 `kb_card`，
