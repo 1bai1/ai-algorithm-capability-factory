@@ -80,7 +80,10 @@ def load(pool_dir: str) -> tuple[list[dict], list[dict]]:
     edges = read_csv(os.path.join(pool_dir, "edges.csv"))
     for n in nodes:
         path = os.path.join(pool_dir, n["category"], n["id"] + ".md")
-        text = open(path, encoding="utf-8").read() if os.path.isfile(path) else ""
+        text = ""
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
         m = re.match(r"^#\s*(.+?)\s*$", text, re.M)
         n["title"] = m.group(1) if m else n["id"]
         n["desc"] = first_sentence(section(text, "能力说明")

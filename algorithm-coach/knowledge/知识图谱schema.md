@@ -119,6 +119,19 @@ from_id,to_id,type,reason
 edges[(edges.type == "并列替代") & ((edges.from_id == x) | (edges.to_id == x))]
 ```
 
+### 建图必须用 MultiDiGraph
+
+同一对节点之间**允许存在不同类型的边**（当前 4 组，例如"基准数据集 → 基线未调优"
+同时是 `依赖` 与 `常见误用`）。所以：
+
+```python
+G = nx.MultiDiGraph()      # ✓ 78 条
+G = nx.DiGraph()           # ✗ 静默折叠成 74 条，(from,to) 相同的只留一条
+```
+
+`graph.graphml` 里每条边是独立的 `<edge>` 元素，`nx.read_graphml` 会正确返回
+`MultiDiGraph`；但自己从 CSV 建图时容易踩这个坑——**DiGraph 不报错，只是少边**。
+
 ## 4. 卡片正文的章节结构
 
 正文只留内容。一级标题 + 固定章节：
