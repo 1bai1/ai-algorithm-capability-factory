@@ -6,6 +6,21 @@
     <algo_dir>/manifest.json   声明标的、标签定义、随机种子、时间预算与成本口径
                                （可选字段 cost_per_side：单边手续费+滑点，默认 0.0005）
 
+交付形态（两层，都要齐）
+------------------------
+``generated/`` 目录是**交给用户的那一份**，必须自包含、可独立运行::
+
+    algorithm.py    算法核心：下面那三个函数（harness 验证时调它）
+    manifest.json   元数据：任务类型、标签口径、类别、随机种子
+    run.py          运行入口：读数据 → 训练 → 预测 → 写结果（用户直接跑这个）
+    README.md       使用说明：依赖、跑法、输入输出格式、口径
+
+``validation/`` 目录放 harness 的验证报告（给人看质量，不是运行的必需品）。
+用户**不需要** harness——run.py 只依赖 pandas / numpy / scikit-learn。
+
+harness 只调用 ``algorithm.py`` 里的三个函数，**从不调用 run.py**；
+但「接口规范」模块会检查 run.py 存在、``--help`` 能起来、喂小数据能真产出预测。
+
 三个函数
 --------
 ``build_features(df) -> DataFrame``

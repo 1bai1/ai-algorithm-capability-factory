@@ -169,7 +169,8 @@ def collect_cards(cards_dir: str, rep: Report) -> dict[str, dict]:
             rel = f"{cat}/{fn}"
             key = f"{cat}/{fn[:-3]}"
             path = os.path.join(d, fn)
-            text = open(path, encoding="utf-8").read()
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
             fm, fm_end = parse_frontmatter(text)
             if not fm:
                 rep.error(rel, 1, "缺少 YAML frontmatter")

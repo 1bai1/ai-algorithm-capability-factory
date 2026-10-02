@@ -116,7 +116,18 @@ matplotlib——装包也不会落到 math 环境里。缺依赖时装进 math �
 > （准确率 / 宏 F1 / 混淆矩阵，对标多数类基线与 harness 自带的 TF-IDF+线性参考基线）。
 > 明细见 `harness/contract.py` 与 `harness/checks/`。
 
-**算法契约**（全文在 `harness/contract.py`）：一个任务目录里放 `algorithm.py` + `manifest.json`。
+**算法契约**（全文在 `harness/contract.py`）：**两层都要齐**。
+
+交付层（给用户的，放在 `<任务目录>/generated/`，必须自包含、可独立运行）：
+
+| 文件 | 要求 |
+|---|---|
+| `algorithm.py` | 下面那张表的三个函数；harness 验证时调它 |
+| `manifest.json` | 任务类型、标签口径、类别、随机种子 |
+| **`run.py`** | **运行入口**：`python run.py --data <csv> --out <结果csv>` → 读数据、训练、预测、写结果。用户直接跑它，**不装 harness** |
+| **`README.md`** | 使用说明：依赖、跑法、输入输出格式、口径 |
+
+算法层（harness 验证的接缝）：
 
 | 项 | 要求 |
 |---|---|
@@ -130,7 +141,7 @@ matplotlib——装包也不会落到 math 环境里。缺依赖时装进 math �
 **验收命令**（四个模块：接口规范＝闸门、功能正确性、指标表现、运行稳定性）：
 
 ```bash
-D:/environment/miniconda3/envs/math/python.exe -m harness validate <算法目录> --data <数据csv> --out knowledge/任务池/<日期>_<对象>_<任务名>/validation/
+D:/environment/miniconda3/envs/math/python.exe -m harness validate knowledge/任务池/<日期>_<对象>_<任务名>/generated --data <数据csv> --out knowledge/任务池/<日期>_<对象>_<任务名>/validation/
 ```
 
 （写成一行：本机 shell 工具是 powershell，反斜杠续行在它那里不成立。`--cutoff` 只有时序任务用，分类任务不加。）

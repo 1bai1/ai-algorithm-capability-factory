@@ -1,10 +1,10 @@
 {
   "meta": {
-    "timestamp": "2026-10-01 23:00:40",
+    "timestamp": "2026-10-02 10:28:12",
     "harness_version": "0.1.0",
     "python": "3.9.23",
-    "platform": "Windows-10-10.0.26200-SP0",
-    "algo_dir": "knowledge\\任务池\\2026-10-01_agnews_四分类",
+    "platform": "Windows-10-10.0.26100-SP0",
+    "algo_dir": "knowledge\\任务池\\2026-10-01_agnews_四分类\\generated",
     "data_path": "examples/text_cls_demo/data/agnews_sample.csv",
     "data_rows": 4000,
     "data_start": null,
@@ -19,9 +19,9 @@
       "performance",
       "stability"
     ],
-    "elapsed_seconds": 13.49,
+    "elapsed_seconds": 16.41,
     "counters": {
-      "passed": 18,
+      "passed": 19,
       "failed": 0,
       "skipped": 0
     },
@@ -129,6 +129,17 @@
           "kb_card": null,
           "elapsed": null,
           "status": "通过"
+        },
+        {
+          "id": "interface.deliverables",
+          "module": "interface",
+          "name": "交付物完整性（可独立运行）",
+          "passed": true,
+          "detail": "可独立运行：run.py --help 正常；320 行小数据上产出 64 条预测（不依赖本项目其它代码）",
+          "location": null,
+          "kb_card": null,
+          "elapsed": null,
+          "status": "通过"
         }
       ]
     },
@@ -144,7 +155,7 @@
           "detail": "4000 行进 4000 行出（未保留 date 列）",
           "location": null,
           "kb_card": null,
-          "elapsed": 0.4557606,
+          "elapsed": 0.48362960000000005,
           "status": "通过"
         },
         {
@@ -166,7 +177,7 @@
           "detail": "全量与仅训练段两次运行，训练段 3200 行 × 2 列逐行一致（最大偏差 0.0e+00）",
           "location": null,
           "kb_card": "文本分类评估与交叉验证",
-          "elapsed": 0.4554793,
+          "elapsed": 0.47003209999999995,
           "status": "通过"
         },
         {
@@ -177,7 +188,7 @@
           "detail": "800 个预测，覆盖 4 类；占比 Sports 0.27、World 0.25、SciTech 0.24、Business 0.24",
           "location": null,
           "kb_card": "文本分类评估与交叉验证",
-          "elapsed": 0.8421799,
+          "elapsed": 0.8857900999999999,
           "status": "通过"
         },
         {
@@ -241,10 +252,10 @@
           "module": "stability",
           "name": "时间预算",
           "passed": true,
-          "detail": "fit/predict 0.8s / 预算 300s；build_features 0.5s",
+          "detail": "fit/predict 0.9s / 预算 300s；build_features 0.5s",
           "location": null,
           "kb_card": null,
-          "elapsed": 0.8421799,
+          "elapsed": 0.8857900999999999,
           "status": "通过"
         },
         {
@@ -252,10 +263,10 @@
           "module": "stability",
           "name": "确定性（同种子可复现）",
           "passed": true,
-          "detail": "同种子两次运行 800 个预测完全一致（各 0.8s / 0.8s）",
+          "detail": "同种子两次运行 800 个预测完全一致（各 0.9s / 0.9s）",
           "location": null,
           "kb_card": "过拟合与结果不稳定",
-          "elapsed": 1.6844047,
+          "elapsed": 1.7235516999999998,
           "status": "通过"
         },
         {
@@ -266,7 +277,7 @@
           "detail": "150 行数据 全链路跑通（训练 105 行，预测 45 行）",
           "location": null,
           "kb_card": null,
-          "elapsed": 0.8997299999999999,
+          "elapsed": 0.8820076000000001,
           "status": "通过"
         },
         {
@@ -277,7 +288,7 @@
           "detail": "注入缺失值并删除若干行后 全链路跑通（训练 2797 行，预测 1200 行）",
           "location": null,
           "kb_card": null,
-          "elapsed": 1.2824075,
+          "elapsed": 1.3153641,
           "status": "通过"
         }
       ]

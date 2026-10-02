@@ -14,6 +14,11 @@
 """
 from __future__ import annotations
 
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -33,6 +38,7 @@ CHECKS: list[tuple[str, str]] = [
     ("interface.functions", "契约函数齐全"),
     ("interface.signatures", "函数签名正确"),
     ("interface.smoke", "冒烟运行"),
+    ("interface.deliverables", "交付物完整性（可独立运行）"),
 ]
 
 # 冒烟数据长度阶梯：先短后长。有些算法的特征窗口较长（如 60 日均线），
@@ -121,8 +127,10 @@ def run(v: "Validator") -> list[CheckResult]:
     results.append(_result("interface.signatures", True, "三个函数的参数个数符合契约"))
 
     # ---- 6. 冒烟运行
-    smoke = _smoke(v)
-    results.append(smoke)
+    results.append(_smoke(v))
+
+    # ---- 7. 交付物完整性
+    results.append(_deliverables(v))
     return results
 
 
@@ -185,3 +193,64 @@ def _tail(text: str | None, lines: int = 6) -> str:
         return "（无错误信息）"
     parts = [ln for ln in text.strip().splitlines() if ln.strip()]
     return " ⏎ ".join(parts[-lines:])
+
+
+DELIVERABLE_ROWS = 320     # 用小切片验证"能不能真跑出预测"
+
+
+def _deliverables(v: "Validator") -> CheckResult:
+    """交付物能不能独立运行：run.py 在不在、--help 起不起得来、能不能真产出预测。
+
+    生成的算法不只是给 harness 调用的零件，也是要交给用户的东西——
+    用户不该为了跑它去拉本项目的源码。所以 run.py 属于契约的一部分。
+    """
+    cid = "interface.deliverables"
+    # 用绝对路径：子进程的 cwd 就是这个目录，相对路径会被拼两遍
+    run_py = (v.algo_dir / "run.py").resolve()
+    if not run_py.is_file():
+        return _result(cid, False,
+                       "缺少 run.py：交付物应自带运行入口（读数据 → 训练 → 预测 → 写结果），"
+                       "不能只作为被 harness 调用的模块存在")
+
+    try:
+        helped = subprocess.run(
+            [sys.executable, str(run_py), "--help"], cwd=str(v.algo_dir),
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=60)
+    except Exception as exc:                      # noqa: BLE001
+        return _result(cid, False, f"run.py --help 起不来：{type(exc).__name__}: {exc}")
+    if helped.returncode != 0:
+        tail = (helped.stderr or helped.stdout or "").strip().splitlines()[-3:]
+        return _result(cid, False, "run.py --help 非零退出：" + " ⏎ ".join(tail))
+
+    tmpdir = tempfile.mkdtemp(prefix="harness_deliverables_")
+    try:
+        slice_path = os.path.join(tmpdir, "slice.csv")
+        out_path = os.path.join(tmpdir, "predictions.csv")
+        v.raw.head(min(DELIVERABLE_ROWS, len(v.raw))).to_csv(
+            slice_path, index=False, encoding="utf-8-sig")
+        try:
+            ran = subprocess.run(
+                [sys.executable, str(run_py), "--data", slice_path, "--out", out_path],
+                cwd=str(v.algo_dir), capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=v.smoke_budget)
+        except subprocess.TimeoutExpired:
+            return _result(cid, False, f"run.py 在 {v.smoke_budget:.0f}s 内没跑完")
+
+        if ran.returncode != 0:
+            tail = (ran.stderr or ran.stdout or "").strip().splitlines()[-3:]
+            return _result(cid, False, "run.py 运行失败：" + " ⏎ ".join(tail))
+        if not os.path.isfile(out_path):
+            return _result(cid, False, "run.py 跑完了但没有产出结果文件（--out 指定的路径为空）")
+        produced = pd.read_csv(out_path)
+        if "prediction" not in produced.columns:
+            return _result(cid, False,
+                           f"结果文件缺少 prediction 列，实际列：{list(produced.columns)}")
+        if produced.empty:
+            return _result(cid, False, "结果文件是空的，没有任何预测")
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    return _result(cid, True,
+                   f"可独立运行：run.py --help 正常；{min(DELIVERABLE_ROWS, len(v.raw))} 行小数据上"
+                   f"产出 {len(produced)} 条预测（不依赖本项目其它代码）")

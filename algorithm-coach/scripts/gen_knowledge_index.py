@@ -73,7 +73,8 @@ def collect(cards_dir: str):
             if not fn.endswith(".md") or fn == "README.md":
                 continue
             path = os.path.join(cat_dir, fn)
-            text = open(path, encoding="utf-8").read()
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
             name = frontmatter_field(text, "name") or fn[:-3]
             cards.append(
                 {

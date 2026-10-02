@@ -22,6 +22,38 @@ from harness import metrics
 from harness.report import Report
 from harness.validate import Validator
 
+RUN_PY = '''
+import argparse
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import algorithm
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--data", required=True)
+ap.add_argument("--out", default="predictions.csv")
+ap.add_argument("--train-ratio", type=float, default=0.8)
+args = ap.parse_args()
+
+df = pd.read_csv(args.data, encoding="utf-8-sig")
+feats = algorithm.build_features(df)
+cols = [c for c in feats.columns if c not in ("label", "date", "text", "symbol")]
+usable = feats["label"].notna().to_numpy()
+if cols:
+    usable &= ~feats[cols].isna().any(axis=1).to_numpy()
+pos = np.flatnonzero(usable)
+n = max(1, int(len(pos) * args.train_ratio))
+train_df, test_df = feats.iloc[pos[:n]], feats.iloc[pos[n:]]
+model = algorithm.fit(train_df)
+preds = np.asarray(algorithm.predict(model, test_df.drop(columns=["label"])))
+pd.DataFrame({"prediction": preds}).to_csv(args.out, index=False, encoding="utf-8-sig")
+print("ok", len(preds))
+'''
+
 CLS_MANIFEST = {
     "task": "classification",
     "subject": "synthetic_text",
@@ -176,6 +208,7 @@ class TextHarnessTestCase(unittest.TestCase):
         (algo_dir / "algorithm.py").write_text(source, encoding="utf-8")
         (algo_dir / "manifest.json").write_text(
             json.dumps(manifest or CLS_MANIFEST, ensure_ascii=False), encoding="utf-8")
+        (algo_dir / "run.py").write_text(RUN_PY, encoding="utf-8")
         return algo_dir
 
     def validate(self, algo_dir: Path, **kwargs) -> tuple[Validator, Report]:
@@ -224,6 +257,19 @@ class TestClassificationPipeline(TextHarnessTestCase):
         item = self.check(report, "correctness.prediction_validity")
         self.assertIs(item.passed, False, item.detail)
         self.assertIn("没见过", item.detail)
+
+    def test_missing_run_py_fails_deliverables(self):
+        """交付物必须能独立运行：缺 run.py 要判负。
+
+        生成的算法不只是给 harness 调用的零件，也是交给用户的东西；
+        用户不该为了跑它去拉本项目的源码。
+        """
+        algo_dir = self.make_algo_dir("cls_no_run", CLS_GOOD)
+        (algo_dir / "run.py").unlink()
+        _, report = self.validate(algo_dir, modules=("interface",))
+        item = self.check(report, "interface.deliverables")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("run.py", item.detail)
 
     def test_bad_manifest_rejected(self):
         algo_dir = self.make_algo_dir(

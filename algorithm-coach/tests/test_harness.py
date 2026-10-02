@@ -31,6 +31,38 @@ DEFAULT_MANIFEST = {
     "budget_seconds": 30,
 }
 
+RUN_PY = '''
+import argparse
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import algorithm
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--data", required=True)
+ap.add_argument("--out", default="predictions.csv")
+ap.add_argument("--train-ratio", type=float, default=0.8)
+args = ap.parse_args()
+
+df = pd.read_csv(args.data, encoding="utf-8-sig")
+feats = algorithm.build_features(df)
+cols = [c for c in feats.columns if c not in ("label", "date", "text", "symbol")]
+usable = feats["label"].notna().to_numpy()
+if cols:
+    usable &= ~feats[cols].isna().any(axis=1).to_numpy()
+pos = np.flatnonzero(usable)
+n = max(1, int(len(pos) * args.train_ratio))
+train_df, test_df = feats.iloc[pos[:n]], feats.iloc[pos[n:]]
+model = algorithm.fit(train_df)
+preds = np.asarray(algorithm.predict(model, test_df.drop(columns=["label"])))
+pd.DataFrame({"prediction": preds}).to_csv(args.out, index=False, encoding="utf-8-sig")
+print("ok", len(preds))
+'''
+
 CUTOFF = "2019-10-01"
 
 
@@ -183,6 +215,7 @@ class HarnessTestCase(unittest.TestCase):
         (algo_dir / "algorithm.py").write_text(source, encoding="utf-8")
         (algo_dir / "manifest.json").write_text(
             json.dumps(manifest or DEFAULT_MANIFEST, ensure_ascii=False), encoding="utf-8")
+        (algo_dir / "run.py").write_text(RUN_PY, encoding="utf-8")
         return algo_dir
 
     def validate(self, algo_dir: Path, **kwargs) -> tuple[Validator, Report]:
