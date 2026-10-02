@@ -368,7 +368,7 @@
     </edge>
     <edge source="文本表示_词袋到上下文嵌入" target="预训练语言模型文本分类">
       <data key="d3">依赖</data>
-      <data key="d4">上下文嵌入（ELMo/GPT/BERT）是本谱系的最新一环，表示学习由预训练模型内置完成，微调即接分类</data>
+      <data key="d4">上下文嵌入（ELMo/GPT/BERT）是本谱系的最新一环，表示学习由预训练模型内置完成，微调即接分类；本卡产出的上下文嵌入正是该表示谱系的最新一环，取代静态词向量成为深度模型的输入</data>
     </edge>
     <edge source="文本预处理与分词" target="TF-IDF词项加权">
       <data key="d3">依赖</data>
@@ -437,10 +437,6 @@
     <edge source="预训练语言模型文本分类" target="文本分类选型_数据规模与成本">
       <data key="d3">依赖</data>
       <data key="d4">"优先试预训练模型（MR、20NG 例外）"是选型卡的第一条决策规则，其例外与代价画像由本卡提供；本卡的"数据充足优先试预训练模型"规则与其例外（MR、20NG）直接来自该卡所依据的汇总结论</data>
-    </edge>
-    <edge source="预训练语言模型文本分类" target="文本表示_词袋到上下文嵌入">
-      <data key="d3">依赖</data>
-      <data key="d4">本卡产出的上下文嵌入正是该表示谱系的最新一环，取代静态词向量成为深度模型的输入</data>
     </edge>
   </graph>
 </graphml>
