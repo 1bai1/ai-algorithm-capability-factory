@@ -19,6 +19,7 @@
 用法::
 
     python scripts/render_graph.py                     # 生成 复用池/graph.html
+    python scripts/render_graph.py --serve             # 生成并起本地服务，输出访问地址
     python scripts/render_graph.py --open              # 生成后直接用浏览器打开
     python scripts/render_graph.py --root TF-IDF词项加权  # 换中心：以某张卡为圆心
     python scripts/render_graph.py --out /tmp/g.html   # 换个输出位置
@@ -213,6 +214,37 @@ def build_html(nodes: list[dict], edges: list[dict], pos: dict,
     return html.replace("</body>", hook), title
 
 
+def serve(directory: str, port: int) -> None:
+    """在本机起一个只读的静态服务，把图挂出去。
+
+    **这是给用户看图的正式方式**：用户不跑命令、不看代码，agent 生成后把
+    `http://127.0.0.1:<port>/graph.html` 交给他即可。只绑 127.0.0.1，不对外。
+    """
+    import functools
+    import http.server
+
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler,
+                                directory=directory)
+    for candidate in range(port, port + 20):
+        try:
+            httpd = http.server.ThreadingHTTPServer(("127.0.0.1", candidate),
+                                                    handler)
+            break
+        except OSError:
+            continue
+    else:
+        print(f"端口 {port}–{port + 19} 都被占用，换一个 --serve-port", file=sys.stderr)
+        return
+    print(f"访问地址 http://127.0.0.1:{candidate}/graph.html")
+    print("（本地服务，只绑 127.0.0.1；Ctrl+C 或结束进程即停）")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        httpd.server_close()
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="把复用池画成可交互知识图谱")
     ap.add_argument("--out", default=None,
@@ -224,6 +256,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--index-size", type=float, default=34,
                     help="中心节点大小（默认 34）")
     ap.add_argument("--open", action="store_true", help="生成后打开浏览器")
+    ap.add_argument("--serve", action="store_true",
+                    help="生成后起本地服务并输出访问地址（给用户看图的正式方式）")
+    ap.add_argument("--serve-port", type=int, default=8765,
+                    help="本地服务起始端口，默认 8765（被占用就往后试）")
     args = ap.parse_args(argv)
 
     root = repo_root()
@@ -261,6 +297,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.open:
         import webbrowser
         webbrowser.open("file://" + os.path.abspath(out))
+    if args.serve:
+        serve(os.path.dirname(os.path.abspath(out)), args.serve_port)
     return 0
 
 

@@ -78,7 +78,8 @@
 看图跑一条命令：
 
 ```bash
-python scripts/render_graph.py          # 出 复用池/graph.html，浏览器打开即可
+python scripts/render_graph.py --serve   # 出图 + 起本地服务，打印访问地址（推荐）
+python scripts/render_graph.py           # 只出 复用池/graph.html，自己打开
 python scripts/render_graph.py --root TF-IDF词项加权   # 也可以指定某张卡当圆心
 ```
 
