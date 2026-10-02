@@ -19,11 +19,9 @@ from pathlib import Path
 import pandas as pd
 
 from . import __version__, contract, data, runner
-from .checks import correctness, interface, performance, stability
+from .checks import ALL_MODULES, MODULES
 from .report import Report
 from .split import Split, split_classification
-
-ALL_MODULES = ("interface", "correctness", "performance", "stability")
 
 
 class Validator:
@@ -42,14 +40,16 @@ class Validator:
         self.data_path = str(data_path)
         self.test_size = test_size
 
-        # 先窥一眼 manifest：拿它的标签列名去加载数据（读不到就按默认列名，
-        # 接口规范那一关会把缺 manifest 拦下）。
-        peek, _ = contract.parse_manifest(self.algo_dir / contract.MANIFEST_FILENAME)
-        self.task = peek.task if peek else "classification"
-        label_column = peek.label.column if peek else contract.LABEL_COLUMN
+        # manifest 由 Validator 自己持有——它是整个验证的上下文，不该依赖
+        # 「接口规范模块跑过了」这个副作用（只跑某一类检查时会拿不到）。
+        # 读不到就按默认值走，接口规范那一关会把缺 manifest 拦下并报错。
+        self.manifest, self.manifest_errors = contract.parse_manifest(
+            self.algo_dir / contract.MANIFEST_FILENAME)
+        self.task = self.manifest.task if self.manifest else "classification"
+        label_column = (self.manifest.label.column if self.manifest
+                        else contract.LABEL_COLUMN)
         self.raw, self.data_info = data.load_text_csv(self.data_path, label_column)
 
-        self.manifest: contract.Manifest | None = None
         self.import_payload: dict | None = None
         self.features: pd.DataFrame | None = None
         self.features_result: runner.RunResult | None = None
@@ -86,39 +86,34 @@ class Validator:
 
     # ---------------------------------------------------------------- 编排
     def run(self) -> Report:
+        """按注册表的 ORDER 依次跑各模块。
+
+        闸门模块（GATE=True，当前是接口规范）不过，后面的模块全部记跳过；
+        需要主流程产物的模块（NEEDS_CHAIN）在轮到自己时才触发 _prepare，
+        这样单独跑某一类检查也不会白跑一遍 fit/predict。
+        """
         results = []
-        if "interface" in self.modules:
-            results += interface.run(self)
-        else:
-            results += interface.skipped_all("未启用接口规范模块")
-
-        gate_ok = all(r.passed is not False for r in results)
-        needs_chain = any(m in self.modules for m in ("correctness", "stability"))
-        if gate_ok and needs_chain:
-            self._prepare()
-
-        gate_reason = "接口规范未通过，跳过"
-        if "correctness" in self.modules:
-            results += (correctness.run(self) if gate_ok
-                        else correctness.skipped_all(gate_reason))
-        else:
-            results += correctness.skipped_all("未启用功能正确性模块")
-
-        if "performance" in self.modules:
-            results += (performance.run(self) if gate_ok
-                        else performance.skipped_all(gate_reason))
-            if self.metrics_payload:
-                self.report.metrics = self.metrics_payload
-        else:
-            results += performance.skipped_all("未启用指标表现模块")
-
-        if "stability" in self.modules:
-            results += (stability.run(self) if gate_ok
-                        else stability.skipped_all(gate_reason))
-        else:
-            results += stability.skipped_all("未启用运行稳定性模块")
+        gate_ok = True
+        prepared = False
+        for name in ALL_MODULES:
+            module = MODULES[name]
+            if name not in self.modules:
+                results += module.skipped_all(f"未启用「{module.TITLE}」模块")
+                continue
+            if not gate_ok:
+                results += module.skipped_all("接口规范未通过，跳过")
+                continue
+            if module.NEEDS_CHAIN and not prepared:
+                self._prepare()
+                prepared = True
+            results += module.run(self)
+            if module.GATE and any(r.passed is False for r in results
+                                   if r.module == name):
+                gate_ok = False
 
         self.report.checks = results
+        if self.metrics_payload:
+            self.report.metrics = self.metrics_payload
         self.report.meta = self._meta()
         return self.report
 
@@ -193,10 +188,10 @@ class Validator:
 
 def format_console(report: Report) -> str:
     """控制台摘要。"""
-    from .report import MODULE_TITLES
-
     icons = {True: "✓", False: "✗", None: "—"}
     lines = ["", "=" * 68]
+    from .checks import MODULE_TITLES
+
     for module, title in MODULE_TITLES.items():
         items = report.by_module(module)
         if not items:

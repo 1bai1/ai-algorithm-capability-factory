@@ -9,12 +9,14 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-MODULE_TITLES = {
-    "interface": "接口规范",
-    "correctness": "功能正确性",
-    "performance": "指标表现",
-    "stability": "运行稳定性",
-}
+def module_titles() -> dict[str, str]:
+    """模块中文标题——来自检查模块自己的声明。
+
+    在函数内 import：checks/* 要 import 本模块的 CheckResult，模块级互相 import
+    会成环。调用时两边都已加载完毕，安全。
+    """
+    from .checks import MODULE_TITLES
+    return MODULE_TITLES
 
 
 def _pct(x: float | None, digits: int = 2, signed: bool = True) -> str:
@@ -90,7 +92,7 @@ class Report:
     # ---------------------------------------------------------------- 输出
     def to_dict(self) -> dict:
         modules: dict[str, dict] = {}
-        for module, title in MODULE_TITLES.items():
+        for module, title in module_titles().items():
             items = [c.to_dict() for c in self.by_module(module)]
             if not items:
                 continue
@@ -149,7 +151,7 @@ class Report:
             f" / 跳过 {counters.get('skipped', 0)}）")
         lines.append("")
 
-        for module, title in MODULE_TITLES.items():
+        for module, title in module_titles().items():
             items = self.by_module(module)
             if not items:
                 continue

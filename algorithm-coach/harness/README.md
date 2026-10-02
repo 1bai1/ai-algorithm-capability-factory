@@ -19,6 +19,11 @@ harness 由**验证者**运行，不是算法的一部分：它自己读数据�
 指标数值由 `metrics.py` 计算（纯函数，便于单测），判定在 `checks/performance.py`——
 计算与判据分开，数值可以单独测、判据可以单独改。
 
+**加一类检查**：在 `checks/` 下新建文件，声明一份模块契约（`MODULE` / `TITLE` /
+`ORDER` / `GATE` / `NEEDS_CHAIN` / `CHECKS` / `run` / `skipped_all`，逐项说明见
+`checks/__init__.py`），再把它加进那里的注册表一行即可——`validate.py` / `report.py` /
+`cli.py` 不认识任何具体模块，只按注册表调度，所以内核不用改。
+
 ## 为什么切分由 harness 控制
 
 训练集/测试集的切分在 harness 手里（分类任务用**分层随机**，种子取自 manifest），

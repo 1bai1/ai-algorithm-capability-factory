@@ -25,6 +25,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..validate import Validator
 
 MODULE = "correctness"
+TITLE = "功能正确性"
+ORDER = 1
+GATE = False
+NEEDS_CHAIN = True     # 要主流程产物（features / split / chain）
 
 CHECKS: list[tuple[str, str, str | None]] = [
     ("correctness.row_conservation", "行数守恒", None),

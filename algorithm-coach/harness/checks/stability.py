@@ -22,6 +22,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..validate import Validator
 
 MODULE = "stability"
+TITLE = "运行稳定性"
+ORDER = 3
+GATE = False
+NEEDS_CHAIN = True
 
 CHECKS: list[tuple[str, str, str | None]] = [
     ("stability.timeout", "时间预算", None),

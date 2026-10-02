@@ -24,6 +24,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..validate import Validator
 
 MODULE = "performance"
+TITLE = "指标表现"
+ORDER = 2
+GATE = False
+NEEDS_CHAIN = True     # 要主流程产物（真跑一遍才有指标）
 
 CHECKS: list[tuple[str, str, str | None]] = [
     ("performance.prediction_quality", "精度账（对标基线）", "基线未调优导致虚假提升"),

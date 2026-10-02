@@ -32,6 +32,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..validate import Validator
 
 MODULE = "interface"
+TITLE = "接口规范"
+ORDER = 0          # 闸门排最前
+GATE = True        # 这一关不过，后面的模块全部跳过
+NEEDS_CHAIN = False
 
 CHECKS: list[tuple[str, str]] = [
     ("interface.files", "提交物齐全"),
