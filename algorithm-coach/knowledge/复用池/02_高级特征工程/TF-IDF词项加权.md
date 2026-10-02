@@ -1,13 +1,3 @@
----
-id: feature.text.tfidf
-name: TF-IDF 词项加权
-category: 02_高级特征工程
-status: 已验证
-sources:
-  - 提炼池/线上博客/文本分类专题/scikit-learn_文本特征提取文档.md
-  - 提炼池/线上博客/csdn/csdncopy.md
----
-
 # TF-IDF 词项加权
 
 ## 能力说明
@@ -68,11 +58,3 @@ scikit-learn（`TfidfVectorizer` / `TfidfTransformer`）、scipy.sparse、numpy�
 - `scikit-learn_文本特征提取文档.md`：tf-idf 定义、两套 idf 公式（smooth 与否）、L2 归一化过程与
   全部数值示例、`idf_` 属性、`TfidfVectorizer` 与 `TfidfTransformer` 的分工、短文本宜用 binary 的提示。
 - `csdncopy.md`：TF 与 IDF 的直观含义（文档内重要性 vs 文档间区分度），以及 IDF 分母 +1 即拉普拉斯平滑。
-
-## 相关能力
-
-- 上游依赖：[[词袋与N-gram文本表示|词袋与 N-gram 文本表示]] —— 输入是计数矩阵，词表与 n-gram 设置完全同源
-- 上游依赖：[[文本预处理与分词|文本预处理与分词]] —— idf 统计在分词后的词表上进行，停用词是否去除会直接改变 idf
-- 并列/替代：[[特征哈希与HashingVectorizer|特征哈希与 HashingVectorizer]] —— 无词表路线要另接 TfidfTransformer 才能拿到 idf，两条路线按内存与可解释性选
-- 下游用途：[[文本分类模型谱系与选择|文本分类模型谱系与选择]] —— tf-idf 稀疏矩阵是线性模型/SVM/朴素贝叶斯的常用输入
-- 并列/替代：[[文本表示_词袋到上下文嵌入|文本表示：词袋到上下文嵌入]] —— 同一表示谱系中稀疏一段的加权方案；该卡给出三代表示的取舍（稀疏可解释但丢语义 vs 语义化但耗时依赖语料），可据此判断是否还需停在 tf-idf

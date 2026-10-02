@@ -1,12 +1,3 @@
----
-id: feature.text.hashing
-name: 特征哈希与 HashingVectorizer
-category: 02_高级特征工程
-status: 已验证
-sources:
-  - 提炼池/线上博客/文本分类专题/scikit-learn_文本特征提取文档.md
----
-
 # 特征哈希与 HashingVectorizer
 
 ## 能力说明
@@ -75,9 +66,3 @@ scikit-learn（`HashingVectorizer` / `FeatureHasher`）、scipy.sparse、numpy�
 - `scikit-learn_文本特征提取文档.md`：`FeatureHasher` 与 `HashingVectorizer` 的接口与参数、
   有符号哈希的动机、`n_features` 取 2 的幂与取值建议、碰撞非零数示例、无状态/不可逆/无 idf 的限制、
   out-of-core 策略、MurmurHash3 实现细节、与 `MultinomialNB`/`chi2` 的非负约束。
-
-## 相关能力
-
-- 上游依赖：[[文本预处理与分词|文本预处理与分词]] —— HashingVectorizer 复用同一套 preprocessor/tokenizer/analyzer，分词策略要先定
-- 并列/替代：[[词袋与N-gram文本表示|词袋与 N-gram 文本表示]] —— 同一任务的两条向量化路线：有词表（可解释可逆）vs 哈希（省内存可流式）
-- 并列/替代：[[TF-IDF词项加权|TF-IDF 词项加权]] —— 哈希本身不提供 idf，要加权就得在流水线里补 TfidfTransformer，按是否需要跨语料可比的权重选

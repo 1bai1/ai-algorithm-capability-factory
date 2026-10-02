@@ -1,12 +1,3 @@
----
-id: model.text.transformer-finetune
-name: Transformer 文本分类微调流程
-category: 03_建模方法
-status: 待验证
-sources:
-  - 提炼池/线上博客/文本分类专题/HuggingFace_序列分类任务文档.md
----
-
 # Transformer 文本分类微调流程
 
 ## 能力说明
@@ -96,10 +87,3 @@ transformers、datasets、evaluate、accelerate（原文安装命令 `pip instal
   `compute_metrics` 的 accuracy 口径、`id2label`/`label2id`、`TrainingArguments` 的全部取值、
   `Trainer` 组装与训练调用、pipeline 与手动推理路径、单条样例的推理分数、
   以及 `eval_dataset=tokenized_imdb["test"]` 与 `load_best_model_at_end=True` 同时出现的事实。
-
-## 相关能力
-
-- 上游依赖：[[文本分类模型谱系与选择|文本分类模型谱系与选择]] —— 本流程是谱系中预训练 Transformer 路线的具体落地
-- 并列/替代：[[TF-IDF词项加权|TF-IDF 词项加权]] —— 小数据/低成本场景的另一条路线（稀疏特征 + 线性模型），上微调前应先比过这条基线
-- 下游用途：[[文本分类评估与交叉验证|文本分类评估与交叉验证]] —— eval_strategy 与 load_best_model_at_end 依赖先定好指标与验证集划分
-- 上游依赖：[[预训练语言模型文本分类|预训练语言模型文本分类：BERT 系列]] —— 本卡的起点是已预训练的 checkpoint（distilbert-base-uncased）及其分词器，模型侧的原理与路线对比由该卡提供
