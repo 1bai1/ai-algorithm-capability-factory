@@ -10,7 +10,8 @@
 本脚本只读这两个 CSV（外加读卡片取标题与首句做展示），生成：
 
     knowledge/知识库索引.md   人读的检索入口
-    knowledge/复用池/graph.graphml   给 Gephi 等图工具双击打开
+
+可视化不走这里——要图就跑 `scripts/render_graph.py`（读同一对 CSV，出可交互 HTML）。
 
 **产物一律不许手工编辑**——改了复用池就重跑本脚本。
 """
@@ -20,7 +21,6 @@ import csv
 import os
 import re
 import sys
-from xml.sax.saxutils import escape
 
 CATEGORIES = [
     "01_数据获取与处理",
@@ -196,37 +196,6 @@ def build_index(nodes: list[dict], edges: list[dict]) -> str:
     return "\n".join(out)
 
 
-def build_graphml(nodes: list[dict], edges: list[dict]) -> str:
-    """手写 GraphML——不引第三方依赖，字段完全由我们掌控。
-
-    节点带 label(=标题)/category/status，边带 type/reason；
-    在 Gephi 里可按 `type` 上色、按边型过滤，这是 Obsidian 图谱视图做不到的。
-    """
-    out: list[str] = ['<?xml version="1.0" encoding="utf-8"?>',
-                      '<graphml xmlns="http://graphml.graphdrawing.org/xmlns">']
-    for i, (name, for_) in enumerate([("label", "node"), ("category", "node"),
-                                      ("status", "node"),
-                                      ("type", "edge"), ("reason", "edge")]):
-        out.append(f'  <key id="d{i}" for="{for_}" attr.name="{name}"'
-                   ' attr.type="string"/>')
-    out.append('  <graph edgedefault="directed">')
-    for n in sorted(nodes, key=lambda x: x["id"]):
-        out.append(f'    <node id="{escape(n["id"])}">')
-        # label 填标题而不是 id：Gephi 用它当节点显示名，id 是下划线连接的文件名，不好读
-        for i, val in enumerate([n["title"], n["category"], n["status"]]):
-            out.append(f'      <data key="d{i}">{escape(val)}</data>')
-        out.append('    </node>')
-    for e in sorted(edges, key=lambda x: (x["from_id"], x["to_id"], x["type"])):
-        out.append(f'    <edge source="{escape(e["from_id"])}"'
-                   f' target="{escape(e["to_id"])}">')
-        out.append(f'      <data key="d3">{escape(e["type"])}</data>')
-        out.append(f'      <data key="d4">{escape(e["reason"])}</data>')
-        out.append('    </edge>')
-    out.append('  </graph>')
-    out.append('</graphml>')
-    return "\n".join(out) + "\n"
-
-
 def main() -> int:
     root = repo_root()
     pool_dir = os.path.join(root, "knowledge", "复用池")
@@ -242,12 +211,8 @@ def main() -> int:
     index_path = os.path.join(root, "knowledge", "知识库索引.md")
     with open(index_path, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(build_index(nodes, edges))
-    graphml_path = os.path.join(pool_dir, "graph.graphml")
-    with open(graphml_path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(build_graphml(nodes, edges))
 
     print(f"已生成 {index_path}")
-    print(f"已生成 {graphml_path}")
     print(f"卡片 {len(nodes)} 张，边 {len(edges)} 条")
     return 0
 

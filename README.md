@@ -82,8 +82,9 @@ flowchart TB
 | 内容本体 | `knowledge/复用池/<类目>/<id>.md` | 卡片正文（标题 + 各章节散文） |
 
 于是**遍历读两张表（全库结构不到 2 万字符），只对选中的卡读正文**。派生物
-`knowledge/知识库索引.md` 与 `复用池/graph.graphml` 由脚本从两个 CSV 生成——
-后者给 Gephi 双击打开，边带类型可上色过滤。
+`knowledge/知识库索引.md` 由脚本从两个 CSV 生成；想看图谱跑 `scripts/render_graph.py`，
+它读同一对 CSV，出一张自包含的可交互 HTML（同心圆布局，能拖、能按类目/状态筛、
+悬停看每条边的判断依据）。
 
 **卡片结构**（完整规范见 `knowledge/知识图谱schema.md`）：
 
@@ -117,9 +118,10 @@ TF-IDF词项加权,02_高级特征工程,已验证,提炼池/线上博客/文本
 边型分布 依赖 41、并列替代 20、常见误用 10、实证证据 7。
 
 **四道质量闸**：`scripts/validate_knowledge.py`（三层校验，29 类违规自测）、
-`scripts/gen_knowledge_index.py`（索引 + graph.graphml，自带回归测试）、
+`scripts/gen_knowledge_index.py`（索引生成，自带回归测试）、
 `scripts/edit_graph.py`（改结构前先验改动本身合不合法）、
 `tests/test_validate_knowledge.py`（校验器自身的自测）。
+可视化是第五条：`scripts/render_graph.py` 读同一对 CSV 出可交互图谱。
 
 ## 4. Agent 工作流设计
 

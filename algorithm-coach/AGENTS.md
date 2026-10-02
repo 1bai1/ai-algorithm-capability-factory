@@ -43,8 +43,9 @@
 | 内容本体 | `复用池/<类目>/<id>.md` | 卡片正文（标题 + 各章节散文） |
 
 每个字段只归一个：结构字段**只**在 CSV，散文**只**在 MD。卡片正文里不得出现
-frontmatter 与「相关能力」；两张 CSV 里不得出现散文。派生物（`知识库索引.md`、
-`graph.graphml`）一律由脚本生成，不许手工编辑。
+frontmatter 与「相关能力」；两张 CSV 里不得出现散文。派生物（`知识库索引.md`）
+一律由脚本生成，不许手工编辑。**想看图谱**跑 `scripts/render_graph.py`——
+它读同一对 CSV，出可交互 HTML（能拖、能按类目/状态筛、悬停看每条边的依据）。
 
 ## 检索规则
 
@@ -70,8 +71,8 @@ frontmatter 与「相关能力」；两张 CSV 里不得出现散文。派生物
 - 结构改动一律走 `scripts/edit_graph.py`（`add-edge` / `add-node` / `set-status` /
   `rename` / `del-edge` / `del-node`），它会在写盘前校验这次改动本身合不合法。
 - 改完复用池：跑 `scripts/validate_knowledge.py`（三层校验，必须 0 错误），
-  再跑 `scripts/gen_knowledge_index.py` 刷新索引与 `graph.graphml`。两者都是派生物，
-  不要手工编辑。
+  再跑 `scripts/gen_knowledge_index.py` 刷新索引。两者都是派生物，不要手工编辑。
+- 要给人看图就跑 `scripts/render_graph.py`（出 `复用池/graph.html`，自包含、可交互）。
 
 ## 交互与落盘
 

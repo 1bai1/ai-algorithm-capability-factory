@@ -13,7 +13,8 @@
 - `复用池/`：**图在这一层**，分两个本体——
   - 结构本体：`nodes.csv`（节点是谁）与 `edges.csv`（边怎么连）。
   - 内容本体：`<类目>/<id>.md`，卡片正文（标题 + 各章节散文）。
-  - 派生：`graph.graphml`，给 Gephi 等图工具双击打开（边带类型，可上色过滤）。
+  - 派生：`graph.html`——跑 `../scripts/render_graph.py` 生成的可交互图谱
+    （自包含、能拖、能筛、悬停看每条边的依据）。它进 `.gitignore`，随时可再生。
 - `任务池/`：某一次具体任务的输入、生成代码、验证结果和报告。
 - `知识库索引.md`：复用池全部卡片的人读清单，含 status 与一句话描述。
   由 `../scripts/gen_knowledge_index.py` 从两个 CSV 生成，**不要手工编辑**；
@@ -32,7 +33,7 @@
 6. **改结构走工具**：`scripts/edit_graph.py`（`add-edge` / `add-node` / `set-status` /
    `rename` / `del-edge` / `del-node`），它会在写盘前校验这次改动本身合不合法。
    改完跑 `validate_knowledge.py`（三层校验、必须 0 错误）与 `gen_knowledge_index.py`
-   （刷新索引与 graph.graphml）。
+   （刷新索引）；想看图谱再跑 `scripts/render_graph.py`。
 
 ## 边
 
@@ -74,8 +75,16 @@
 ## 看图
 
 卡片里**没有 wikilink**（边在 CSV），所以 Obsidian 的关系图谱不再反映真实结构。
-看图请用 `复用池/graph.graphml`——Gephi / yEd 双击可开，节点带 `category`/`status`，
-边带 `type`/`reason`，能按边型上色、按类目过滤。
+看图跑一条命令：
+
+```bash
+python scripts/render_graph.py          # 出 复用池/graph.html，浏览器打开即可
+python scripts/render_graph.py --root TF-IDF词项加权   # 也可以指定某张卡当圆心
+```
+
+布局是同心圆：中心是《知识库索引》，其余卡片按度数降序往外摊，**装满了自动开新圈**
+（第 k 圈容量 `6+2k`），所以库变大不用改代码。节点能拖、左上角能按类目/状态筛、
+悬停看每条边的判断依据。
 
 Obsidian 仍可用来读卡片正文（中文目录树、大纲、搜索都好用），只是别再指望它的图谱。
 Agent 不依赖任何客户端，直接读两张 CSV 与卡片正文。

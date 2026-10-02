@@ -1,15 +1,14 @@
-"""索引与图谱导出的自检：文档里的数字必须来自实际结构，派生物不许漂移。
+"""索引生成器的自检：文档里的数字必须来自实际结构，派生物不许漂移。
 
-为什么要盯这个：索引与 graph.graphml 都是自动生成的、明文写着「请勿手工编辑」，
-于是**没人读它**。历史上两个 bug 就这么活了很久——
+为什么要盯这个：索引是自动生成的、明文写着「请勿手工编辑」，于是**没人读它**。历史上两个 bug 就这么活了很久——
 
 - `92 张卡` 是写死的字面量（金融时代正好 92 张，所以看着一直正常）；
 - 类别间连接密度矩阵要求边目标写成 `复用池/<类目>/…` 这种带路径的形式，
   而项目约定早已改成裸文件名，于是那张表恒为空。
 
-现在的规矩是：结构在 `复用池/nodes.csv` 与 `edges.csv`，索引与 graph.graphml 都是
-**从这两个文件生成的派生物**。所以这里盯三件事：数字来自结构、两个派生物互相对得上、
-**在库的派生物与现场重算一致**（改了卡却忘了重跑生成器，会在这里红）。
+现在的规矩是：结构在 `复用池/nodes.csv` 与 `edges.csv`，索引是**从这两个文件生成的
+派生物**。所以这里盯两件事：数字来自结构、**在库的索引与现场重算一致**（改了卡却忘了
+重跑生成器，会在这里红）。
 
 运行::
 
@@ -21,7 +20,6 @@ import csv
 import importlib.util
 import re
 import unittest
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,7 +37,6 @@ class TestKnowledgeIndex(unittest.TestCase):
         cls.nodes, cls.edges = gen.load(str(POOL))
         cls.text = gen.build_index(cls.nodes, cls.edges)
         cls.lines = cls.text.splitlines()
-        cls.graphml = gen.build_graphml(cls.nodes, cls.edges)
 
     def test_card_count_comes_from_structure(self):
         """卡片数必须由 nodes.csv 算出，不能写死。"""
@@ -77,36 +74,14 @@ class TestKnowledgeIndex(unittest.TestCase):
         self.assertNotIn("万 token", self.text)
         self.assertNotIn("194 篇", self.text)
 
-    def test_graphml_matches_structure(self):
-        """GraphML 能被 XML 解析，节点/边数与结构一致，且带类型与依据。"""
-        root = ET.fromstring(self.graphml)
-        ns = "{http://graphml.graphdrawing.org/xmlns}"
-        nodes = root.findall(f".//{ns}node")
-        edges = root.findall(f".//{ns}edge")
-        self.assertEqual(len(nodes), len(self.nodes))
-        self.assertEqual(len(edges), len(self.edges))
-        keys = {k.get("id"): k.get("attr.name") for k in root.findall(f"{ns}key")}
-        names = {keys[d.get("key")] for e in edges for d in e.findall(f"{ns}data")}
-        self.assertIn("type", names)
-        self.assertIn("reason", names)
-        node_names = {keys[d.get("key")] for n in nodes for d in n.findall(f"{ns}data")}
-        self.assertIn("label", node_names)
-        self.assertIn("status", node_names)
-
-    def test_committed_artifacts_are_fresh(self):
-        """在库的两个派生物必须与现场重算一致——改了结构忘了重跑生成器，这里会红。"""
+    def test_committed_index_is_fresh(self):
+        """在库的索引必须与现场重算一致——改了结构忘了重跑生成器，这里会红。"""
         index_path = ROOT / "knowledge" / "知识库索引.md"
-        graphml_path = POOL / "graph.graphml"
         self.assertTrue(index_path.is_file(), "索引文件不存在，跑一次生成器")
-        self.assertTrue(graphml_path.is_file(), "graph.graphml 不存在，跑一次生成器")
         self.assertEqual(
             index_path.read_text(encoding="utf-8").replace("\r\n", "\n"),
             self.text,
             "知识库索引.md 与现场重算不一致——改了复用池就重跑 gen_knowledge_index.py")
-        self.assertEqual(
-            graphml_path.read_text(encoding="utf-8").replace("\r\n", "\n"),
-            self.graphml,
-            "graph.graphml 与现场重算不一致——改了复用池就重跑 gen_knowledge_index.py")
 
 
 if __name__ == "__main__":

@@ -18,8 +18,9 @@
 1. **卡片正文里不许出现结构**——没有 frontmatter，也没有「相关能力」小节。
    正文里出现这两样，校验按错误处理（那是迁移没做干净）。
 2. **CSV 里不许出现正文**——两张表只有标量字段，散文一律留在 MD。
-3. **派生物一律不许手工编辑**——`知识库索引.md` 与 `graph.graphml` 由
-   `../scripts/gen_knowledge_index.py` 生成，改了复用池就重跑脚本。
+3. **派生物一律不许手工编辑**——`知识库索引.md` 由 `../scripts/gen_knowledge_index.py`
+   生成；可视化产物 `复用池/graph.html` 由 `../scripts/render_graph.py` 生成
+   （它进 `.gitignore`，是随时可再生的看板，不进仓库）。改了复用池就重跑。
 
 ### 为什么要这么分
 
@@ -129,8 +130,7 @@ G = nx.MultiDiGraph()      # ✓ 78 条
 G = nx.DiGraph()           # ✗ 静默折叠成 74 条，(from,to) 相同的只留一条
 ```
 
-`graph.graphml` 里每条边是独立的 `<edge>` 元素，`nx.read_graphml` 会正确返回
-`MultiDiGraph`；但自己从 CSV 建图时容易踩这个坑——**DiGraph 不报错，只是少边**。
+自己从 CSV 建图时容易踩这个坑——**DiGraph 不报错，只是少边**。
 
 ## 4. 卡片正文的章节结构
 
@@ -242,7 +242,8 @@ python scripts/edit_graph.py del-node 卡A
 ```bash
 python scripts/validate_knowledge.py            # 校验，输出摘要
 python scripts/validate_knowledge.py -v         # 同时列出全部警告明细
-python scripts/gen_knowledge_index.py           # 刷新索引与 graph.graphml
+python scripts/gen_knowledge_index.py           # 刷新索引
+python scripts/render_graph.py                  # 想看图谱时再跑（出 graph.html）
 python tests/test_validate_knowledge.py         # 校验器自身的自测（29 类违规夹具）
 ```
 
@@ -270,4 +271,4 @@ python tests/test_validate_knowledge.py         # 校验器自身的自测（29 
 - ~~`name` 字段与边的显示名~~ → 现在展示名是正文 H1，边不再引用显示名
 - ~~边写在卡片的 `## 相关能力` 小节里，链接用裸文件名配合 MPE 的 `shortest` 解析~~
   → 边在 edges.csv，卡片里没有链接了，Obsidian 图谱视图不再有意义，
-  看图请用 `graph.graphml`（Gephi 双击可开，还能按边型上色过滤）
+  看图跑 `scripts/render_graph.py`（出可交互 HTML，能拖能筛，按边型上色）

@@ -15,14 +15,14 @@ tools: read,powershell,edit,write,grep,find,ls
 ## 硬性纪律
 
 1. **不创建规范、说明、索引、汇总类文件。** 只写实际的知识内容（提炼文件、能力卡）。
-   索引与 `graph.graphml` 由 `scripts/gen_knowledge_index.py` 生成，不要手工编辑。
+   索引由 `scripts/gen_knowledge_index.py` 生成，不要手工编辑。
 2. **改结构一律走 `scripts/edit_graph.py`，不要手搓 CSV。** 它会在写盘前校验这次
    改动本身合不合法（枚举、外键、方向、互指对），手改 CSV 不会。
 3. **改动复用池后必须依次重跑**：
 
    ```bash
    python scripts/validate_knowledge.py        # 三层校验，必须 0 错误
-   python scripts/gen_knowledge_index.py       # 刷新索引与 graph.graphml
+   python scripts/gen_knowledge_index.py       # 刷新索引
    ```
 
    不跑校验不算交付。

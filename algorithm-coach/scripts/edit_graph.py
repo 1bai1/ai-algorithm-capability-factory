@@ -308,5 +308,6 @@ if __name__ == "__main__":
     if code == 0 and len(sys.argv) > 1 and sys.argv[1] != "check":
         print("\n提示：结构改完记得跑一次全量校验")
         print("      python scripts/validate_knowledge.py")
-        print("      python scripts/gen_knowledge_index.py   # 刷新索引与 graph.graphml")
+        print("      python scripts/gen_knowledge_index.py   # 刷新索引")
+        print("      python scripts/render_graph.py          # 想看图谱时再跑")
     raise SystemExit(code)
