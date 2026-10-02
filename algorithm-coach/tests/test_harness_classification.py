@@ -1,7 +1,10 @@
-"""文本分类任务的 harness 自测：一个好算法 + 四种埋雷变体。
+"""文本分类 harness 的自测：一个好算法 + 若干埋雷变体。
 
-与 `test_harness.py`（时序任务）分开，因为两类的判据不同：
-分类账要抓的是"向量化器在全量语料上 fit"这类隐性泄漏，以及类别标签的合法性问题。
+两条主线：
+- **判据能不能抓到该抓的**——隐性泄漏（向量化器在全量语料上 fit）、恒常数预测、
+  未见类别、删行、不可复现、超时、小样本崩、坏数据崩；
+- **接口闸门与交付层**——缺文件、语法错带行号、签名不符、缺标签列、README 的
+  示例命令能不能跑、文档有没有先讲清"它是什么"。
 
 运行::
 
@@ -157,6 +160,51 @@ CLS_UNSEEN = CLS_GOOD.replace(
     '    preds[:5] = "Zzz"\n'
     '    return np.asarray(preds)')
 
+
+# 偷偷删行：build_features 里丢掉首行再重置索引
+# （文本表没有预热期 NaN，dropna 删不掉东西——得真删行才测得到这条检查）
+CLS_ROW_DROP = CLS_GOOD.replace(
+    "\n    return out\n\n\nclass Model:",
+    "\n    return out.iloc[1:].reset_index(drop=True)\n\n\nclass Model:")
+
+# 不可复现：predict 里引入未受种子控制的随机源（default_rng 不理会 np.random.seed）
+CLS_NONDET = CLS_GOOD.replace(
+    '    return np.asarray(model.pipe.predict(test_df[NORM].astype(str)))',
+    '    preds = model.pipe.predict(test_df[NORM].astype(str)).astype(str)\n'
+    '    rng = np.random.default_rng()\n'
+    '    flip = rng.random(len(preds)) < 0.3\n'
+    '    preds[flip] = rng.choice(["A", "B", "C"], size=int(flip.sum()))\n'
+    '    return np.asarray(preds)')
+
+# 慢：fit 里睡 5 秒
+CLS_SLOW = CLS_GOOD.replace("def fit(train_df):",
+                            "def fit(train_df):\n    import time; time.sleep(5)")
+
+# 小样本直接崩：要求至少 300 行（冒烟阶梯最长只试到 250 行）
+CLS_CRASH_SMALL = CLS_GOOD.replace(
+    "def build_features(df):",
+    'def build_features(df):\n'
+    '    if len(df) < 300:\n'
+    '        raise ValueError("需要至少 300 行文本，当前 %d 行" % len(df))')
+
+# 坏数据直接崩：不接受空文本（corrupt_text 会注入空文本）
+CLS_CRASH_ON_EMPTY = CLS_GOOD.replace(
+    "def build_features(df):",
+    'def build_features(df):\n'
+    '    if (df["text"].astype(str).str.strip() == "").any():\n'
+    '        raise ValueError("输入含空文本")')
+
+# 丢了标签列：特征表里没有 label
+CLS_NO_LABEL = CLS_GOOD.replace(
+    "\n    return out\n\n\nclass Model:",
+    "\n    return out.drop(columns=[LABEL])\n\n\nclass Model:")
+
+# 参数个数不符：fit 要两个参数
+CLS_WRONG_ARITY = CLS_GOOD.replace("def fit(train_df):", "def fit(train_df, extra):")
+
+# 语法错：def 后面少了冒号
+CLS_SYNTAX_ERROR = CLS_GOOD.replace("def predict(model, test_df):",
+                                    "def predict(model, test_df)")
 
 def synthetic_text_dataset(n_per_class: int = 200, seed: int = 11) -> pd.DataFrame:
     """三类可分的合成文本：每类有自己的词表，另加共享噪声词。"""
@@ -314,6 +362,102 @@ class TestClassificationPipeline(TextHarnessTestCase):
         item = self.check(report, "interface.manifest")
         self.assertIs(item.passed, False, item.detail)
         self.assertIn("text_column", item.detail)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+
+
+class TestBugDetection(TextHarnessTestCase):
+    """埋雷变体必须被对应的检查抓住——一条雷对一个检查 id。"""
+
+    def test_row_drop_triggers_conservation(self):
+        algo_dir = self.make_algo_dir("cls_row_drop", CLS_ROW_DROP)
+        _, report = self.validate(algo_dir, modules=("interface", "correctness"))
+        item = self.check(report, "correctness.row_conservation")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("行", item.detail)
+
+    def test_nondeterminism_detected(self):
+        algo_dir = self.make_algo_dir("cls_nondet", CLS_NONDET)
+        _, report = self.validate(algo_dir, modules=("interface", "stability"))
+        item = self.check(report, "stability.determinism")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("不一致", item.detail)
+
+    def test_timeout_detected(self):
+        algo_dir = self.make_algo_dir("cls_slow", CLS_SLOW)
+        _, report = self.validate(algo_dir, modules=("interface", "stability"),
+                                  budget=2)
+        self.assertIs(self.check(report, "interface.smoke").passed, True)
+        item = self.check(report, "stability.timeout")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("预算", item.detail)
+
+    def test_small_sample_crash_gates_at_interface(self):
+        algo_dir = self.make_algo_dir("cls_crash_small", CLS_CRASH_SMALL)
+        _, report = self.validate(algo_dir)
+        item = self.check(report, "interface.smoke")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("300", item.detail)
+        # 闸门拦住后，后续模块全部跳过
+        self.assertIsNone(self.check(report, "correctness.row_conservation").passed)
+        self.assertIsNone(self.check(report, "stability.determinism").passed)
+
+    def test_bad_data_crash_detected(self):
+        algo_dir = self.make_algo_dir("cls_crash_empty", CLS_CRASH_ON_EMPTY)
+        _, report = self.validate(algo_dir,
+                                  modules=("interface", "correctness", "stability"))
+        item = self.check(report, "stability.bad_data")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("空文本", item.detail)
+        self.assertIs(self.check(report, "stability.small_sample").passed, True)
+
+
+class TestInterfaceGate(TextHarnessTestCase):
+    """闸门行为：拦不住的算法不该进后面的模块。"""
+
+    def test_missing_files(self):
+        algo_dir = self.tmp / "cls_empty"
+        algo_dir.mkdir(exist_ok=True)
+        _, report = self.validate(algo_dir, modules=("interface",))
+        item = self.check(report, "interface.files")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIsNone(self.check(report, "interface.manifest").passed)
+
+    def test_syntax_error_reported_with_location(self):
+        algo_dir = self.make_algo_dir("cls_syntax", CLS_SYNTAX_ERROR)
+        _, report = self.validate(algo_dir, modules=("interface",))
+        item = self.check(report, "interface.import")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIsNotNone(item.location, "语法错误应带出错位置")
+        self.assertIn("algorithm.py", str(item.location))
+
+    def test_wrong_arity(self):
+        algo_dir = self.make_algo_dir("cls_arity", CLS_WRONG_ARITY)
+        _, report = self.validate(algo_dir, modules=("interface",))
+        item = self.check(report, "interface.signatures")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("fit", item.detail)
+
+    def test_missing_label_column(self):
+        algo_dir = self.make_algo_dir("cls_no_label", CLS_NO_LABEL)
+        _, report = self.validate(algo_dir, modules=("interface",))
+        item = self.check(report, "interface.smoke")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("标签列", item.detail)
+
+    def test_metrics_are_reported(self):
+        algo_dir = self.make_algo_dir("cls_metrics", CLS_GOOD)
+        _, report = self.validate(algo_dir)
+        m = report.metrics
+        self.assertIn("prediction", m)
+        self.assertGreater(m["prediction"]["accuracy"], 0.8)
+        self.assertEqual(len(m["prediction"]["per_class"]), 3)
+        self.assertEqual(len(m["prediction"]["confusion"]), 3)
+        md = report.to_markdown()
+        self.assertIn("精度账", md)
+        self.assertIn("混淆矩阵", md)
 
 
 if __name__ == "__main__":

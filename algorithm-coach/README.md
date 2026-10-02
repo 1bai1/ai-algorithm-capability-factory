@@ -40,7 +40,7 @@ python scripts/validate_knowledge.py
 python scripts/gen_knowledge_index.py
 
 # 自测
-python -m unittest tests.test_harness tests.test_harness_classification tests.test_knowledge_index
+python -m unittest tests.test_harness_classification tests.test_knowledge_index
 python tests/test_validate_knowledge.py
 ```
 

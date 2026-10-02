@@ -43,8 +43,8 @@ CHECKS: list[tuple[str, str]] = [
     ("interface.deliverables", "交付物完整性（可独立运行）"),
 ]
 
-# 冒烟数据长度阶梯：先短后长。有些算法的特征窗口较长（如 60 日均线），
-# 太短的切片整表都是预热 NaN，取不到可用行就换长一点的，直到能真正跑一遍。
+# 冒烟数据长度阶梯：先短后长。有些算法对样本量有隐含下限（比如向量化器要求
+# 每类至少若干样本），太短的切片取不到可用行就换长一点的，直到能真正跑一遍。
 SMOKE_LADDER = (60, 150, 250)
 SMOKE_TEST_ROWS = 15
 MIN_USABLE_ROWS = 5
@@ -156,7 +156,7 @@ def _smoke(v: "Validator") -> CheckResult:
         usable = frame.dropna()
         if len(usable) < MIN_USABLE_ROWS:
             last_problem = (f"{len(sub)} 行切片里只有 {len(usable)} 行可用"
-                            f"（特征还在预热期）")
+                            f"（特征还没成形）")
             continue
 
         test_rows = min(SMOKE_TEST_ROWS, max(1, len(usable) // 3))
@@ -181,8 +181,8 @@ def _smoke(v: "Validator") -> CheckResult:
                        f"（训练 {len(train_df)} 行，预测 {len(test_df)} 行）")
 
     return _result("interface.smoke", False,
-                   f"{last_problem}；最长试到 {SMOKE_LADDER[-1]} 行仍无可用特征，"
-                   f"预热窗口过长或特征实现有问题")
+                   f"{last_problem}；最长试到 {SMOKE_LADDER[-1]} 行仍跑不出可用特征，"
+                   f"特征实现有问题（或对样本量有隐含下限）")
 
 
 def _tail(text: str | None, lines: int = 6) -> str:

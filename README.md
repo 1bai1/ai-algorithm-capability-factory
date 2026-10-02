@@ -201,7 +201,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 
 ```bash
 cd algorithm-coach
-python -m unittest tests.test_harness tests.test_harness_classification tests.test_knowledge_index
+python -m unittest tests.test_harness_classification tests.test_knowledge_index
 python tests/test_validate_knowledge.py
 ```
 
