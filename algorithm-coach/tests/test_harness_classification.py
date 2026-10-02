@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -191,6 +192,9 @@ class TestClassificationMetrics(unittest.TestCase):
         self.assertGreater(metrics.macro_f1(truth, pred), 0.0)
 
 
+README_TEMPLATE = "# 测试算法\n\n```bash\npython run.py --data {rel} --out 预测.csv\n```\n"
+
+
 class TextHarnessTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -209,6 +213,9 @@ class TextHarnessTestCase(unittest.TestCase):
         (algo_dir / "manifest.json").write_text(
             json.dumps(manifest or CLS_MANIFEST, ensure_ascii=False), encoding="utf-8")
         (algo_dir / "run.py").write_text(RUN_PY, encoding="utf-8")
+        rel = os.path.relpath(self.data_path, algo_dir).replace(os.sep, "/")
+        (algo_dir / "README.md").write_text(
+            README_TEMPLATE.format(rel=rel), encoding="utf-8")
         return algo_dir
 
     def validate(self, algo_dir: Path, **kwargs) -> tuple[Validator, Report]:
@@ -270,6 +277,16 @@ class TestClassificationPipeline(TextHarnessTestCase):
         item = self.check(report, "interface.deliverables")
         self.assertIs(item.passed, False, item.detail)
         self.assertIn("run.py", item.detail)
+
+    def test_readme_without_runnable_command_fails(self):
+        """README 的示例命令必须能直接跑：全是占位符要判负。"""
+        algo_dir = self.make_algo_dir("cls_bad_readme", CLS_GOOD)
+        (algo_dir / "README.md").write_text(
+            README_TEMPLATE.replace("{rel}", "数据.csv"), encoding="utf-8")
+        _, report = self.validate(algo_dir, modules=("interface",))
+        item = self.check(report, "interface.deliverables")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("README", item.detail)
 
     def test_bad_manifest_rejected(self):
         algo_dir = self.make_algo_dir(

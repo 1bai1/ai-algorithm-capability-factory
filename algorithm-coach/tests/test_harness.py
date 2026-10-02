@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -197,6 +198,9 @@ CRASH_ON_NAN = GOOD.replace(
     '        raise ValueError("输入含缺失收盘价")')
 
 
+README_TEMPLATE = "# 测试算法\n\n```bash\npython run.py --data {rel} --out 预测.csv\n```\n"
+
+
 class HarnessTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -216,6 +220,9 @@ class HarnessTestCase(unittest.TestCase):
         (algo_dir / "manifest.json").write_text(
             json.dumps(manifest or DEFAULT_MANIFEST, ensure_ascii=False), encoding="utf-8")
         (algo_dir / "run.py").write_text(RUN_PY, encoding="utf-8")
+        rel = os.path.relpath(self.data_path, algo_dir).replace(os.sep, "/")
+        (algo_dir / "README.md").write_text(
+            README_TEMPLATE.format(rel=rel), encoding="utf-8")
         return algo_dir
 
     def validate(self, algo_dir: Path, **kwargs) -> tuple[Validator, Report]:

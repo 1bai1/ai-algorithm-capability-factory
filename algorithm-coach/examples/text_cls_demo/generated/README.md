@@ -19,8 +19,16 @@ pip install pandas numpy scikit-learn
 
 ## 3. 跑
 
+**直接跑**——用本任务的示例数据集，路径可直接复制：
+
 ```bash
-python run.py --data 你的数据.csv --out 预测结果.csv
+python run.py --data ../data/agnews_sample.csv --out 预测.csv
+```
+
+**换成你自己的数据**，只改 `--data`：
+
+```bash
+python run.py --data 你的数据.csv --out 预测.csv
 ```
 
 可选参数：`--train-ratio 0.8`（训练段占比）、`--seed 42`。
@@ -43,7 +51,7 @@ python run.py --data 你的数据.csv --out 预测结果.csv
 基线对照与成本扫描）在其 harness 里，报告见 `../validation/`：
 
 ```bash
-python -m harness validate . --data <数据csv>
+python -m harness validate . --data ../data/agnews_sample.csv
 ```
 
 **运行本算法不需要 harness**——它只是一个可选的质检工具。

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -212,6 +213,20 @@ def _deliverables(v: "Validator") -> CheckResult:
                        "缺少 run.py：交付物应自带运行入口（读数据 → 训练 → 预测 → 写结果），"
                        "不能只作为被 harness 调用的模块存在")
 
+    readme = v.algo_dir / "README.md"
+    if not readme.is_file():
+        return _result(cid, False,
+                       "缺少 README.md：交付物应带使用说明（依赖 / 跑法 / 输入输出 / 口径）")
+    text = readme.read_text(encoding="utf-8", errors="replace")
+    cited = [m.group(1).strip("`\"'") for m in re.finditer(r"--data\s+([^\s`\"']+)", text)]
+    if not cited:
+        return _result(cid, False,
+                       "README.md 里没有带 --data 的运行示例——用户拿到手第一步就卡住")
+    if not any((v.algo_dir / c).exists() for c in cited):
+        return _result(cid, False,
+                       "README.md 里的 --data 路径都不存在（相对算法目录解析）："
+                       + "、".join(cited[:3]) + "；示例命令必须能直接复制运行")
+
     try:
         helped = subprocess.run(
             [sys.executable, str(run_py), "--help"], cwd=str(v.algo_dir),
@@ -252,5 +267,6 @@ def _deliverables(v: "Validator") -> CheckResult:
         shutil.rmtree(tmpdir, ignore_errors=True)
 
     return _result(cid, True,
-                   f"可独立运行：run.py --help 正常；{min(DELIVERABLE_ROWS, len(v.raw))} 行小数据上"
-                   f"产出 {len(produced)} 条预测（不依赖本项目其它代码）")
+                   f"可独立运行：run.py --help 正常；README 的示例命令指向真实数据（{cited[0]}）；"
+                   f"{min(DELIVERABLE_ROWS, len(v.raw))} 行小数据上产出 {len(produced)} 条预测"
+                   f"（不依赖本项目其它代码）")
