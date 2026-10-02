@@ -199,6 +199,23 @@ def _tail(text: str | None, lines: int = 6) -> str:
 DELIVERABLE_ROWS = 320     # 用小切片验证"能不能真跑出预测"
 
 
+def _section_body(text: str, title: str) -> str | None:
+    """取出某个小节（`## 它是什么`）的正文；没有这个小节返回 None。"""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(rf"^(#{{1,4}})\s*{re.escape(title)}\s*$", line.strip())
+        if not m:
+            continue
+        level = len(m.group(1))
+        body: list[str] = []
+        for nxt in lines[i + 1:]:
+            if re.match(rf"^#{{1,{level}}}\s", nxt):
+                break
+            body.append(nxt)
+        return "\n".join(body)
+    return None
+
+
 def _deliverables(v: "Validator") -> CheckResult:
     """交付物能不能独立运行：run.py 在不在、--help 起不起得来、能不能真产出预测。
 
@@ -226,6 +243,28 @@ def _deliverables(v: "Validator") -> CheckResult:
         return _result(cid, False,
                        "README.md 里的 --data 路径都不存在（相对算法目录解析）："
                        + "、".join(cited[:3]) + "；示例命令必须能直接复制运行")
+
+    # 交付文档必须先讲清「这是什么算法」，再谈依赖与跑法——不能一上来堆术语，
+    # 也不能整篇不提。README 与任务报告用同一个固定小节名，便于机器检查。
+    bad_docs: list[str] = []
+    for doc_name, doc_path in (("README.md", readme),
+                               ("report.md", v.algo_dir.parent / "report.md")):
+        if not doc_path.is_file():
+            if doc_name == "README.md":
+                bad_docs.append("缺少 README.md")
+            continue                      # 任务报告可选：存在才要求
+        body = _section_body(doc_path.read_text(encoding="utf-8", errors="replace"),
+                             "它是什么")
+        if body is None:
+            bad_docs.append(f"{doc_name} 没有「## 它是什么」一节")
+            continue
+        chars = len(re.sub(r"\s+", "", body))
+        if chars < 50:
+            bad_docs.append(f"{doc_name} 的「它是什么」只有 {chars} 字，没讲清")
+    if bad_docs:
+        return _result(cid, False,
+                       "；".join(bad_docs)
+                       + "。交付文档开头必须先用一两句人话讲清这是什么算法，再展开依赖与跑法")
 
     try:
         helped = subprocess.run(

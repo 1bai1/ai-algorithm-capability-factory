@@ -1,6 +1,6 @@
 {
   "meta": {
-    "timestamp": "2026-10-02 11:28:52",
+    "timestamp": "2026-10-02 18:21:54",
     "harness_version": "0.1.0",
     "python": "3.9.23",
     "platform": "Windows-10-10.0.26100-SP0",
@@ -19,7 +19,7 @@
       "performance",
       "stability"
     ],
-    "elapsed_seconds": 17.25,
+    "elapsed_seconds": 19.29,
     "counters": {
       "passed": 19,
       "failed": 0,
@@ -155,7 +155,7 @@
           "detail": "4000 行进 4000 行出（未保留 date 列）",
           "location": null,
           "kb_card": null,
-          "elapsed": 0.3977872,
+          "elapsed": 0.5182846,
           "status": "通过"
         },
         {
@@ -177,7 +177,7 @@
           "detail": "全量与仅训练段两次运行，训练段 3200 行 × 2 列逐行一致（最大偏差 0.0e+00）",
           "location": null,
           "kb_card": "文本分类评估与交叉验证",
-          "elapsed": 0.3841088,
+          "elapsed": 0.4153879,
           "status": "通过"
         },
         {
@@ -188,7 +188,7 @@
           "detail": "800 个预测，覆盖 4 类；占比 Sports 0.26、World 0.25、SciTech 0.25、Business 0.24",
           "location": null,
           "kb_card": "文本分类评估与交叉验证",
-          "elapsed": 1.2088565,
+          "elapsed": 1.4881813,
           "status": "通过"
         },
         {
@@ -252,10 +252,10 @@
           "module": "stability",
           "name": "时间预算",
           "passed": true,
-          "detail": "fit/predict 1.2s / 预算 300s；build_features 0.4s",
+          "detail": "fit/predict 1.5s / 预算 300s；build_features 0.5s",
           "location": null,
           "kb_card": null,
-          "elapsed": 1.2088565,
+          "elapsed": 1.4881813,
           "status": "通过"
         },
         {
@@ -266,7 +266,7 @@
           "detail": "同种子两次运行 800 个预测完全一致（各 1.2s / 1.2s）",
           "location": null,
           "kb_card": "过拟合与结果不稳定",
-          "elapsed": 2.4050787000000002,
+          "elapsed": 2.4341823,
           "status": "通过"
         },
         {
@@ -277,7 +277,7 @@
           "detail": "150 行数据 全链路跑通（训练 105 行，预测 45 行）",
           "location": null,
           "kb_card": null,
-          "elapsed": 0.7443690000000001,
+          "elapsed": 0.7275578999999999,
           "status": "通过"
         },
         {
@@ -288,7 +288,7 @@
           "detail": "注入缺失值并删除若干行后 全链路跑通（训练 2797 行，预测 1200 行）",
           "location": null,
           "kb_card": null,
-          "elapsed": 1.5750557,
+          "elapsed": 1.7043778,
           "status": "通过"
         }
       ]

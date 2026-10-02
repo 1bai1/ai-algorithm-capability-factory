@@ -192,7 +192,13 @@ class TestClassificationMetrics(unittest.TestCase):
         self.assertGreater(metrics.macro_f1(truth, pred), 0.0)
 
 
-README_TEMPLATE = "# 测试算法\n\n```bash\npython run.py --data {rel} --out 预测.csv\n```\n"
+README_TEMPLATE = (
+    "# 测试算法\n\n"
+    "## 它是什么\n\n"
+    "一个自测用的占位算法：读入数据、训练、预测并写出结果文件。这句话要够长，才能通过 harness 的「它是什么」检查。\n\n"
+    "```bash\n"
+    "python run.py --data {rel} --out 预测.csv\n"
+    "```\n")
 
 
 class TextHarnessTestCase(unittest.TestCase):
@@ -287,6 +293,17 @@ class TestClassificationPipeline(TextHarnessTestCase):
         item = self.check(report, "interface.deliverables")
         self.assertIs(item.passed, False, item.detail)
         self.assertIn("README", item.detail)
+
+    def test_docs_must_open_with_what_it_is(self):
+        """交付文档第一节必须先用一两句人话讲清"这是什么算法"。"""
+        algo_dir = self.make_algo_dir("cls_no_whatis", CLS_GOOD)
+        txt = (algo_dir / "README.md").read_text(encoding="utf-8")
+        (algo_dir / "README.md").write_text(
+            txt.replace("## 它是什么", "## 简介"), encoding="utf-8")
+        _, report = self.validate(algo_dir, modules=("interface",))
+        item = self.check(report, "interface.deliverables")
+        self.assertIs(item.passed, False, item.detail)
+        self.assertIn("它是什么", item.detail)
 
     def test_bad_manifest_rejected(self):
         algo_dir = self.make_algo_dir(

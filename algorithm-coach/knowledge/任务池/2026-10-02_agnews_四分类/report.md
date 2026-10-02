@@ -1,5 +1,16 @@
 # 任务报告：AG News 四分类算法
 
+## 它是什么
+
+本任务交付的是一个 **AG News 四分类算法**：输入一段新闻文本，输出
+`Business` / `SciTech` / `Sports` / `World` 中的一个类别。
+
+路线是经典浅层方案，不含神经网络、不需要 GPU：TF-IDF 稀疏特征（词 1/2-gram ∪
+词内字符 3/5-gram）配互补朴素贝叶斯 `ComplementNB(α=0.3)`，普通 CPU 秒级训练。
+为什么落到这个算法而不是别的，见下面第 1、3 节的检索与选型记录。
+
+## 任务概况
+
 - **日期**：2026-10-02
 - **对象**：AG News 四分类（`Business` / `SciTech` / `Sports` / `World`）
 - **数据**：`examples/text_cls_demo/data/agnews_sample.csv`，4000 行 × 2 列（`text` / `label`），

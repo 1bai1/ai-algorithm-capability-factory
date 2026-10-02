@@ -198,7 +198,13 @@ CRASH_ON_NAN = GOOD.replace(
     '        raise ValueError("输入含缺失收盘价")')
 
 
-README_TEMPLATE = "# 测试算法\n\n```bash\npython run.py --data {rel} --out 预测.csv\n```\n"
+README_TEMPLATE = (
+    "# 测试算法\n\n"
+    "## 它是什么\n\n"
+    "一个自测用的占位算法：读入数据、训练、预测并写出结果文件。这句话要够长，才能通过 harness 的「它是什么」检查。\n\n"
+    "```bash\n"
+    "python run.py --data {rel} --out 预测.csv\n"
+    "```\n")
 
 
 class HarnessTestCase(unittest.TestCase):
