@@ -1,4 +1,9 @@
 from_id,to_id,type,reason
+AGNews_特征哈希_TFIDF加权_线性SVM,AGNews_词字符n-gram_ComplementNB,并列替代,同为该 4000 行 agnews_sample.csv 上的浅层分类路线，本卡无词表哈希表示 + LinearSVC(C=0.5) 跨种子宏 F1 0.8759±0.0111，该卡词表 TF-IDF + ComplementNB(alpha=0.3) 跨种子 0.8796±0.0066，可用同口径跨种子数字对照哈希表示与词表表示
+AGNews_特征哈希_TFIDF加权_线性SVM,TF-IDF词项加权,实证证据,本卡两支哈希均设 norm=None，再由 TfidfTransformer(sublinear_tf=True) 统一补 idf，且 idf 只在训练段 3200 行拟合、测试段只 transform，seed=42 测试 800 行宏 F1 0.890，是该卡稀疏加权表示与训练/测试分离纪律的一次真实运行记录
+AGNews_特征哈希_TFIDF加权_线性SVM,文本分类评测口径与可复现性,实证证据,本卡按该卡口径同报准确率与宏 F1、对照多数类（0.250 / 0.100）与 harness 调过的参考基线（0.875 / 0.874），并用 experiments/select_robust.py 跨 5 个切分种子 42/7/2024/1/99 复核，同时记录反泄漏（偏差 0）与确定性（800 预测一致），是可复现评测的一次运行实例
+AGNews_特征哈希_TFIDF加权_线性SVM,浅层文本分类_朴素贝叶斯与SVM,实证证据,本卡以 LinearSVC(C=0.5) 在 4000 行小样本、无 GPU 场景取得 seed=42 宏 F1 0.890；experiments/select_robust.py 跨 5 个切分种子 0.8759±0.0111（最低 0.8585），为该卡中小样本浅层线性 SVM 是强基线提供一条实证
+AGNews_特征哈希_TFIDF加权_线性SVM,特征哈希与HashingVectorizer,实证证据,本卡用 HashingVectorizer 把词 1/2-gram 与 char_wb 3/5-gram 各哈希到 2^18 维、不建词表，在 AG News 4000 行采样集测试 800 行上取得宏 F1 0.890；experiments/select_hashed.py 显示 2^18 与 2^20 维结果一致（均 0.8888 / 0.8882），是该卡无词表哈希路线的一次真实运行记录
 AGNews_词字符n-gram_ComplementNB,AGNews_词字符n-gram_NB_LogReg软投票,并列替代,同为该 4000 行采样集上的浅层路线，单模型 ComplementNB 与软投票集成可用同口径跨种子数字对照（0.8796 vs 0.8856 宏 F1）
 AGNews_词字符n-gram_ComplementNB,TF-IDF词项加权,实证证据,本卡用 sublinear_tf、min_df 加权的词 TF-IDF 并集跑到宏 F1 0.884，是该卡稀疏加权表示可用性的一次真实运行记录
 AGNews_词字符n-gram_ComplementNB,文本分类评测口径与可复现性,实证证据,本卡按该卡口径报告准确率与宏 F1、对照多数类与强参考基线、跨 5 个切分种子复核，是可复现评测的一次运行实例

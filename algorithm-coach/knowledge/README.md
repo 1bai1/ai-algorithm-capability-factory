@@ -6,7 +6,7 @@ generator: scripts/gen_knowledge_index.py
 
 # 行业算法能力知识库
 
-四层递进，每一层是上一层的加工产物。**当前场景：文本分类｜25 张卡 / 83 条边。**
+四层递进，每一层是上一层的加工产物。**当前场景：文本分类｜26 张卡 / 88 条边。**
 
 | 层 | 位置 | 内容 | 何时读 |
 |---|---|---|---|
@@ -62,8 +62,9 @@ generator: scripts/gen_knowledge_index.py
 - [[停用词表与分词器不一致|停用词表与分词器不一致]] `有缺陷` — 停用词表保存的是原始词形，而向量化器先分词再匹配：分词后词形已经变样，表里没有的残片被当成有效特征留下。
 - [[基线未调优导致虚假提升|基线未调优导致虚假提升]] `有缺陷` — 把"超过基线"当成方法进步的证据，但基线本身没被认真调过：强基线（尤其BERT系）的学习率等关键超参未披露或取值偏离最优，…
 
-### 07_验证证据（3 张）
+### 07_验证证据（4 张）
 
+- [[AGNews_特征哈希_TFIDF加权_线性SVM|AG News 四分类 × 特征哈希 + TF-IDF 加权 + 线性 SVM]] `已验证` — 本卡记录「逐行规范化→词1/2-gram与词内字符3/5-gram各经HashingVectorizer哈希到2^18维→…
 - [[AGNews_词字符n-gram_ComplementNB|AG News 四分类 × 词/字符 n-gram ComplementNB]] `已验证` — 本卡记录「逐行规范化→词1/2-gramTF-IDF∪词内字符3/5-gramTF-IDF→ComplementNB(al…
 - [[AGNews_词字符n-gram_NB_LogReg软投票|AG News 四分类 × 词/字符 n-gram 软投票（ComplementNB ∪ LogisticRegression）]] `已验证` — 本卡记录「逐行规范化→词1/2-gramTF-IDF∪词内字符3/5-gramTF-IDF→ComplementNB(α=…
 - [[Enron垃圾邮件_12模型F-score对比|Enron 垃圾邮件 × 12 模型 F-score 对比]] `已验证` — 外部文献在公开Enron邮件语料上做的一次多模型对比评测记录：12个机器学习文本分类器加一条NLP预处理流水线，最终报告最…

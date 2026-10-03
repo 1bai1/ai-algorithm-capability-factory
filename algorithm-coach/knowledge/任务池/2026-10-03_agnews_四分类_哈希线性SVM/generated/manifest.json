@@ -1,0 +1,11 @@
+{
+  "task": "classification",
+  "subject": "AG News 四分类（4000 行采样集）· 特征哈希 + TF-IDF 加权 + 线性 SVM",
+  "label": {
+    "column": "label",
+    "classes": ["Business", "SciTech", "Sports", "World"]
+  },
+  "text_column": "text",
+  "seed": 42,
+  "budget_seconds": 300
+}
