@@ -1,26 +1,5 @@
 # 算法能力工厂（AI Algorithm Capability Factory）
 
-> 把散落在资料里的「行业算法能力」抽出来沉淀成可检索的知识库，再由 AI Agent 检索它、
-> 复刻出**可运行、可验证**的算法代码——一条「能力抽取 → 能力复刻 → 能力验证与沉淀」的
-> 端到端半自主闭环。
-
-| | |
-|---|---|
-| **默认分支** | `clean-text-cls` —— 文本分类场景 |
-| 验证机制 | `algorithm-coach/harness/` —— 四模块 19 项检查，产出结构化报告 |
-| 知识库 | `algorithm-coach/knowledge/` —— 25 张卡片 / 83 条边 + 校验器 + 索引 |
-
-## 目录
-
-```text
-algorithm-coach/   算法能力工厂：知识库、验证机制、示例与自测
-pi-main/           Pi Agent 底层框架（随仓库提供，含 lock 文件）
-requirements.txt   Python 依赖
-agent.md           Git 提交边界说明
-```
-
----
-
 ## 1. 项目背景和目标
 
 大模型时代，算法开发正在从「人工理解需求—手工写代码—人工测试」转向
