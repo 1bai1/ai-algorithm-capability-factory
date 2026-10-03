@@ -37,15 +37,20 @@ ORDER = 0          # 闸门排最前
 GATE = True        # 这一关不过，后面的模块全部跳过
 NEEDS_CHAIN = False
 
-CHECKS: list[tuple[str, str]] = [
-    ("interface.files", "提交物齐全"),
-    ("interface.manifest", "manifest 合法"),
-    ("interface.import", "模块可导入"),
-    ("interface.functions", "契约函数齐全"),
-    ("interface.signatures", "函数签名正确"),
-    ("interface.smoke", "冒烟运行"),
-    ("interface.deliverables", "交付物完整性（可独立运行）"),
+CHECKS: list[tuple[str, str, str | None]] = [
+    # 第三项是"依据的知识卡"。接口规范这几项是**工程规范**（提交物齐不齐、能不能导入、
+    # 签名对不对、交付物能不能独立跑），不是某条算法能力，所以没有卡可引——写 None。
+    # 形状与其他三个模块保持一致（见 checks/__init__.py 的模块契约）。
+    ("interface.files", "提交物齐全", None),
+    ("interface.manifest", "manifest 合法", None),
+    ("interface.import", "模块可导入", None),
+    ("interface.functions", "契约函数齐全", None),
+    ("interface.signatures", "函数签名正确", None),
+    ("interface.smoke", "冒烟运行", None),
+    ("interface.deliverables", "交付物完整性（可独立运行）", None),
 ]
+
+CHECK_INFO = {cid: (name, card) for cid, name, card in CHECKS}
 
 # 冒烟数据长度阶梯：先短后长。有些算法对样本量有隐含下限（比如向量化器要求
 # 每类至少若干样本），太短的切片取不到可用行就换长一点的，直到能真正跑一遍。
@@ -55,15 +60,15 @@ MIN_USABLE_ROWS = 5
 
 
 def _result(cid: str, passed: bool, detail: str = "", location=None) -> CheckResult:
-    name = dict(CHECKS)[cid]
+    name, card = CHECK_INFO[cid]
     return CheckResult(id=cid, module=MODULE, name=name, passed=passed,
-                       detail=detail, location=location)
+                       detail=detail, location=location, kb_card=card)
 
 
 def _all_skipped(reason: str, from_index: int = 0) -> list[CheckResult]:
     """CHECKS 里从 from_index 起（含）的检查项，记一条跳过。"""
     return [CheckResult.skipped(cid, MODULE, name, reason)
-            for cid, name in CHECKS[from_index:]]
+            for cid, name, _ in CHECKS[from_index:]]
 
 
 def skipped_all(reason: str) -> list[CheckResult]:
