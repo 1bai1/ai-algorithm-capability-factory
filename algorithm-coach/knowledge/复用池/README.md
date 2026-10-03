@@ -24,6 +24,6 @@ frontmatter 字段、章节结构、`status` 取值、边格式与全部不变�
 ## 改完必须做的两件事
 
 1. 跑 `python scripts/validate_knowledge.py`，必须 0 错误；
-2. 跑 `python scripts/gen_knowledge_index.py` 重新生成 `knowledge/知识库索引.md`。
+2. 跑 `python scripts/gen_knowledge_index.py` 重新生成 `knowledge/README.md`。
 
 本池的写入只由**知识管理员**（被委派时）执行，主 agent 不得直接改动。

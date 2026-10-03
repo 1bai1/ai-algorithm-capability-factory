@@ -18,9 +18,10 @@
 1. **卡片正文里不许出现结构**——没有 frontmatter，也没有「相关能力」小节。
    正文里出现这两样，校验按错误处理（那是迁移没做干净）。
 2. **CSV 里不许出现正文**——两张表只有标量字段，散文一律留在 MD。
-3. **派生物一律不许手工编辑**——`知识库索引.md` 由 `../scripts/gen_knowledge_index.py`
-   生成；可视化产物 `复用池/graph.html` 由 `../scripts/render_graph.py` 生成
-   （它进 `.gitignore`，是随时可再生的看板，不进仓库）。改了复用池就重跑。
+3. **派生物一律不许手工编辑**——`knowledge/README.md`（本目录的导航 + 卡片清单）
+   由 `../scripts/gen_knowledge_index.py` 生成；可视化产物 `复用池/graph.html`
+   由 `../scripts/render_graph.py` 生成（它进 `.gitignore`，随时可再生，不进仓库）。
+   改了复用池就重跑。
 
 ### 为什么要这么分
 
@@ -132,6 +133,24 @@ G = nx.DiGraph()           # ✗ 静默折叠成 74 条，(from,to) 相同的只
 
 自己从 CSV 建图时容易踩这个坑——**DiGraph 不报错，只是少边**。
 
+### 该连哪些边：连边标准
+
+只有一条：**这条边对「该不该用这个能力、怎么用」有没有决策价值。**
+
+于是具体、会导致出错的依赖连边；泛泛、常识性的依赖不连。例如「特征工程需要原始数据」
+是常识，不会因为看到这条边就改变做法。**相邻不等于有决策依赖。**
+
+### 怎么审一条边：依据的可信度分级
+
+依据强度递减，审边时按这个顺序判断：
+
+1. **共同原文**（最强）：两张卡的 `sources` 有交集，说明讲的是同一个实验。可用脚本验证。
+2. **流程阶段**（中等）：「模型必须有上游特征」这类关系是结构性推断，不是这批材料独有的事实。
+3. **方法类比**（最弱）：两卡解决同一类问题但无共同原文，属于判断而非证据，不可当证据使用。
+
+判断一条边属于哪类，看 `reason` 那句话：说得出具体数字或文件的是可核实的；
+只说「两者都做同一件事」的是判断。
+
 ## 4. 卡片正文的章节结构
 
 正文只留内容。一级标题 + 固定章节：
@@ -242,7 +261,7 @@ python scripts/edit_graph.py del-node 卡A
 ```bash
 python scripts/validate_knowledge.py            # 校验，输出摘要
 python scripts/validate_knowledge.py -v         # 同时列出全部警告明细
-python scripts/gen_knowledge_index.py           # 刷新索引
+python scripts/gen_knowledge_index.py           # 刷新 knowledge/README.md
 python scripts/render_graph.py                  # 想看图谱时再跑（出 graph.html）
 python tests/test_validate_knowledge.py         # 校验器自身的自测（29 类违规夹具）
 ```

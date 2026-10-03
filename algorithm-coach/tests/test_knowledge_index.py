@@ -1,14 +1,13 @@
-"""索引生成器的自检：文档里的数字必须来自实际结构，派生物不许漂移。
+"""`knowledge/README.md` 的自检：数字来自结构、不抄规则、派生物不许漂移。
 
-为什么要盯这个：索引是自动生成的、明文写着「请勿手工编辑」，于是**没人读它**。历史上两个 bug 就这么活了很久——
+它是生成物、明文写着「请勿手工编辑」，于是**没人读它**。历史上两个 bug 就这么活了很久——
+`92 张卡` 是写死的字面量（金融时代正好 92 张，看着一直正常）、类别间密度矩阵因为
+解析口径变了而恒为空。现在文件换了形态（索引 → 目录 README），同样的风险还在，所以盯三件事：
 
-- `92 张卡` 是写死的字面量（金融时代正好 92 张，所以看着一直正常）；
-- 类别间连接密度矩阵要求边目标写成 `复用池/<类目>/…` 这种带路径的形式，
-  而项目约定早已改成裸文件名，于是那张表恒为空。
-
-现在的规矩是：结构在 `复用池/nodes.csv` 与 `edges.csv`，索引是**从这两个文件生成的
-派生物**。所以这里盯两件事：数字来自结构、**在库的索引与现场重算一致**（改了卡却忘了
-重跑生成器，会在这里红）。
+1. **数字来自结构**：卡数/边数由 `nodes.csv` 与 `edges.csv` 算出，不是字面量；
+2. **不抄规则**：检索路径、status 含义、边型方向分别住在 AGENTS.md 与 schema.md 里，
+   README 只做导航与清单——同一件事写两遍就是漂移的源头；
+3. **在库的那份与现场重算一致**：改了卡却忘了重跑生成器，会在这里红。
 
 运行::
 
@@ -16,9 +15,7 @@
 """
 from __future__ import annotations
 
-import csv
 import importlib.util
-import re
 import unittest
 from pathlib import Path
 
@@ -31,57 +28,50 @@ gen = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(gen)
 
 
-class TestKnowledgeIndex(unittest.TestCase):
+class TestKnowledgeReadme(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.nodes, cls.edges = gen.load(str(POOL))
-        cls.text = gen.build_index(cls.nodes, cls.edges)
-        cls.lines = cls.text.splitlines()
+        cls.text = gen.build_readme(cls.nodes, cls.edges)
 
-    def test_card_count_comes_from_structure(self):
-        """卡片数必须由 nodes.csv 算出，不能写死。"""
-        self.assertIn(f"（共 {len(self.nodes)} 张）", self.text)
+    def test_counts_come_from_structure(self):
+        """卡数与边数必须由两张 CSV 算出，不能写死。"""
+        self.assertIn(f"{len(self.nodes)} 张卡 / {len(self.edges)} 条边", self.text)
         self.assertNotIn("92 张卡", self.text)
-
-    def test_density_matrix_is_filled(self):
-        """类别间连接密度矩阵必须有数，且总数等于边数。"""
-        start = next((i for i, l in enumerate(self.lines)
-                      if "类别间连接密度" in l), None)
-        self.assertIsNotNone(start, "索引里找不到密度矩阵")
-        rows = [l for l in self.lines[start:start + 14]
-                if l.startswith("| ") and set(l) - set("|- 0123456789") == set()]
-        self.assertTrue(rows, "矩阵表格没渲染出来")
-        total = 0
-        for row in rows:
-            cells = [c.strip() for c in row.strip("|").split("|")][1:]
-            total += sum(int(c) for c in cells if c.isdigit())
-        self.assertEqual(total, len(self.edges),
-                         "矩阵里的边数总和与 edges.csv 对不上——起点/终点类目解析有问题")
 
     def test_every_card_listed(self):
         """每张卡都要出现在清单里（链接目标用 id，显示名用正文 H1）。"""
         for n in self.nodes:
             self.assertIn(f"[[{n['id']}|{n['title']}]]", self.text)
 
-    def test_edge_types_and_directions_documented(self):
-        """四种边型与各自的方向约定都要写进索引。"""
-        for t in gen.EDGE_TYPES:
-            self.assertIn(f"`{t}`", self.text)
-            self.assertIn(gen.EDGE_TYPE_MEANING[t], self.text)
+    def test_does_not_duplicate_rules(self):
+        """不抄规则：检索路径、status 含义表、边型方向表都不该出现在这里。
+
+        这三样分别住在 AGENTS.md（检索与选用）与 schema.md（结构与边型）里。
+        抄进 README 就多一份要同步的东西——历史上那些过期数字就是这么来的。
+        """
+        for banned in ("## 检索路径", "## 状态说明", "## 边型与方向", "类别间连接密度"):
+            self.assertNotIn(banned, self.text, f"README 里不该出现「{banned}」，它在别的文件里")
+
+    def test_points_to_where_rules_live(self):
+        """导航要指对地方：规则在 AGENTS.md 与 schema.md，看图有命令。"""
+        self.assertIn("AGENTS.md", self.text)
+        self.assertIn("知识图谱schema.md", self.text)
+        self.assertIn("render_graph.py", self.text)
 
     def test_no_hardcoded_pool_sizes(self):
         """池的体量不要写死数字（会随库变化而过期）。"""
         self.assertNotIn("万 token", self.text)
         self.assertNotIn("194 篇", self.text)
 
-    def test_committed_index_is_fresh(self):
-        """在库的索引必须与现场重算一致——改了结构忘了重跑生成器，这里会红。"""
-        index_path = ROOT / "knowledge" / "知识库索引.md"
-        self.assertTrue(index_path.is_file(), "索引文件不存在，跑一次生成器")
+    def test_committed_readme_is_fresh(self):
+        """在库的 README 必须与现场重算一致——改了结构忘了重跑生成器，这里会红。"""
+        path = ROOT / "knowledge" / "README.md"
+        self.assertTrue(path.is_file(), "knowledge/README.md 不存在，跑一次生成器")
         self.assertEqual(
-            index_path.read_text(encoding="utf-8").replace("\r\n", "\n"),
+            path.read_text(encoding="utf-8").replace("\r\n", "\n"),
             self.text,
-            "知识库索引.md 与现场重算不一致——改了复用池就重跑 gen_knowledge_index.py")
+            "knowledge/README.md 与现场重算不一致——改了复用池就重跑 gen_knowledge_index.py")
 
 
 if __name__ == "__main__":

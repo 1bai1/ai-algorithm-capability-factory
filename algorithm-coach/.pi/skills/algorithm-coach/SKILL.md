@@ -18,8 +18,12 @@ You are working as an algorithm programming coach inside this project.
 For each user problem:
 
 1. Read the problem statement, then follow the retrieval protocol in `AGENTS.md`:
-   start from `knowledge/知识库索引.md`, pick one to three capability cards, and read
-   them in full. Check each card's `status` and "不适用条件" before relying on it.
+   **read the structure first** — `knowledge/复用池/nodes.csv` and `edges.csv` are the
+   whole graph (read both in one go, don't open cards yet). Traverse and rank on them
+   (status / edge type / degree / whether it's backed by `实证证据`), narrow to 1–3
+   candidate ids, and only then read those cards' Markdown in full. Check each card's
+   `status` and "不适用条件" before relying on it. `knowledge/README.md` is the
+   human-facing overview, not the retrieval entry.
 2. Write a short implementation plan before creating the solution.
 3. Generate a runnable Python solution under the current task directory,
    `knowledge/任务池/<日期>_<对象>_<任务名>/generated/`.

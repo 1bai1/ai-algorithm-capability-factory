@@ -4,7 +4,7 @@
 读 `复用池/nodes.csv` 与 `复用池/edges.csv`——**改了库重跑本脚本，图跟着变**，
 脚本里没有任何写死的节点数、类目或边。
 
-布局：同心圆。中心是《知识库索引》（它给每张卡发一条链接，是天然的枢纽），
+布局：同心圆。中心是《知识库》（合成枢纽节点，代表"库本身"——它引出所有卡片），
 其余卡片按**度数降序**往外摊——连接最多的靠中心，边缘的在外圈。
 
     第 k 圈容量 = BASE + k * GROWTH   （外圈周长更长，能放更多）
@@ -42,7 +42,7 @@ CAPACITY_GROWTH = 2    # 每往外一圈多放几个
 R0 = 340.0             # 内圈半径
 R_STEP = 210.0         # 每往外一圈半径加多少
 
-INDEX_NODE = "知识库索引"   # 合成枢纽的 id（它不在 nodes.csv 里）
+INDEX_NODE = "知识库"       # 合成枢纽的 id（它不在 nodes.csv 里，代表库本身）
 
 # ---- 配色 ----------------------------------------------------------------
 
@@ -167,7 +167,7 @@ def build_html(nodes: list[dict], edges: list[dict], pos: dict,
                   "strokeColor":"#ffffff"}}}
 """)
 
-    # 中心：合成枢纽（默认《知识库索引》），位置钉死在原点
+    # 中心：合成枢纽（默认《知识库》），位置钉死在原点
     net.add_node(root, label=root, x=0, y=0, physics=False, shape="dot",
                  size=index_size,
                  color=vis_color("#cfcfcf"),

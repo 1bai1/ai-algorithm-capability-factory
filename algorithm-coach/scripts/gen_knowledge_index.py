@@ -9,8 +9,9 @@
 
 本脚本只读这两个 CSV（外加读卡片取标题与首句做展示），生成：
 
-    knowledge/知识库索引.md   人读的检索入口
+    knowledge/README.md   这个目录的导航 + 能力卡清单（人读）
 
+只放"怎么找东西"和"库里有什么"；规则本身在 AGENTS.md 与 schema.md，这里不抄第二份。
 可视化不走这里——要图就跑 `scripts/render_graph.py`（读同一对 CSV，出可交互 HTML）。
 
 **产物一律不许手工编辑**——改了复用池就重跑本脚本。
@@ -91,12 +92,17 @@ def load(pool_dir: str) -> tuple[list[dict], list[dict]]:
     return nodes, edges
 
 
-def build_index(nodes: list[dict], edges: list[dict]) -> str:
+def build_readme(nodes: list[dict], edges: list[dict]) -> str:
+    """生成 `knowledge/README.md`：这个目录的导航 + 能力卡清单。
+
+    刻意**只放两样东西**：怎么找到东西（四池表 + 规则指针）、库里有什么（卡片清单）。
+    规则本身（检索路径、status 含义、边型方向、不变量）各自在 AGENTS.md 与
+    schema.md 里，这里不抄第二份——同一件事写三遍就是漂移的源头。
+
+    也没有规模统计（卡数、边数、密度矩阵）：那是"报表"，需要时现算即可，
+    放在目录首页反而像过期倒计时。
+    """
     by_cat = {c: [n for n in nodes if n["category"] == c] for c in CATEGORIES}
-    status_counts = {s: sum(1 for n in nodes if n["status"] == s)
-                     for s in STATUS_MEANING}
-    edge_counts = {t: sum(1 for e in edges if e["type"] == t) for t in EDGE_TYPES}
-    stem_to_cat = {n["id"]: n["category"] for n in nodes}
 
     out: list[str] = []
     out.append("---")
@@ -105,79 +111,21 @@ def build_index(nodes: list[dict], edges: list[dict]) -> str:
     out.append("generator: scripts/gen_knowledge_index.py")
     out.append("---")
     out.append("")
-    out.append("# 行业算法能力知识库索引")
+    out.append("# 行业算法能力知识库")
     out.append("")
-    out.append("> 本文件由 `scripts/gen_knowledge_index.py` 从 `复用池/nodes.csv` 与")
-    out.append("> `复用池/edges.csv` 自动生成，**请勿手工编辑**。改了复用池就重跑该脚本。")
-    out.append("")
-    out.append("## 四池结构")
-    out.append("")
-    out.append("四层递进，每一层是上一层的加工产物：")
+    out.append(f"四层递进，每一层是上一层的加工产物。**当前场景：文本分类｜{len(nodes)} 张卡 / {len(edges)} 条边。**")
     out.append("")
     out.append("| 层 | 位置 | 内容 | 何时读 |")
     out.append("|---|---|---|---|")
-    out.append(f"| 复用池 | `复用池/` | {len(nodes)} 张能力卡 + 结构本体"
-               "（`nodes.csv` / `edges.csv`） | **默认工作层**，任务开始就读 |")
+    out.append(f"| 复用池 | `复用池/` | 能力卡 + 结构本体（`nodes.csv` / `edges.csv`） | **默认工作层**，任务开始就读 |")
     out.append("| 提炼池 | `提炼池/<来源类目>/` | 单篇提炼，目录与原始池同构 | 卡片信息不足时下钻 |")
     out.append("| 原始池 | `原始池/<来源类目>/` | **外部来源**的原始材料（付费材料不进仓库） | 需逐字核对原文时下钻 |")
     out.append("| 任务池 | `任务池/` | 单次任务的方案、代码、结果、报告 | 任务开始时建档、结束时写回 |")
     out.append("")
-    out.append("**禁止整体读取任何一个池的目录。** 任何一层整读都会撑爆上下文窗口——")
-    out.append("这是硬约束，不因为库还小就放宽。检索必须走下面的分层路径。")
-    out.append("")
-    out.append("## 检索路径")
-    out.append("")
-    out.append("1. **结构在 CSV 里**：读 `复用池/nodes.csv` 与 `复用池/edges.csv`——这就是整张图，"
-               "两个文件一次读完，不必开卡片。")
-    out.append("2. **在图上遍历与排序**：按 `status`、边型、度数、有没有被 `实证证据` 背过书"
-               "收窄到 1–3 个候选 `id`。")
-    out.append("3. **只对选中的卡读正文**：打开 `复用池/<类目>/<id>.md`，看「不适用条件」"
-               "「关键参数」这些散文细节。")
-    out.append("4. 卡片信息不足时，按 `nodes.csv` 的 `sources` 列下钻到提炼池对应文件；"
-               "仍需核对原文时再下钻原始池。")
-    out.append("")
-    out.append("## 状态说明")
-    out.append("")
-    out.append("| status | 含义 | 使用建议 |")
-    out.append("|---|---|---|")
-    for s, (meaning, advice) in STATUS_MEANING.items():
-        out.append(f"| {s} | {meaning} | {advice} |")
-    out.append("")
-    out.append(f"当前分布（共 {len(nodes)} 张）："
-               + " / ".join(f"{s} {status_counts[s]}" for s in STATUS_MEANING) + "。")
-    out.append("")
-    out.append("**选用任何能力前必须先看 `status` 与卡片正文里的「不适用条件」——"
-               "库里记录着已验证的错误做法。**")
-    out.append("")
-    out.append("## 边型与方向")
-    out.append("")
-    out.append("| 边型 | 方向约定 |")
-    out.append("|---|---|")
-    for t in EDGE_TYPES:
-        out.append(f"| `{t}` | {EDGE_TYPE_MEANING[t]} |")
-    out.append("")
-    out.append(f"{len(nodes)} 张卡之间共 {len(edges)} 条边，按类型分布：")
-    out.append("")
-    out.append("| 边型 | 条数 |")
-    out.append("|---|---|")
-    for t in EDGE_TYPES:
-        out.append(f"| {t} | {edge_counts[t]} |")
-    out.append("")
-    out.append("类别间连接密度（行 = 边的起点，列 = 终点；"
-               "`并列替代` 只存一条，矩阵不对称是正常的）：")
-    out.append("")
-    out.append("| 起点 \\ 终点 | " + " | ".join(c[:2] for c in CATEGORIES) + " |")
-    out.append("|---" * (len(CATEGORIES) + 1) + "|")
-    for src in CATEGORIES:
-        row = [src[:2]]
-        for dst in CATEGORIES:
-            n = sum(1 for e in edges
-                    if stem_to_cat.get(e["from_id"]) == src
-                    and stem_to_cat.get(e["to_id"]) == dst)
-            row.append(str(n) if n else "")
-        out.append("| " + " | ".join(row) + " |")
-    out.append("")
-    out.append("---")
+    out.append("**禁止整体读取任何一个池的目录**——任何一层整读都会撑爆上下文窗口。")
+    out.append("检索怎么走、能力怎么选，见 `../AGENTS.md`；卡片与边的定义、不变量，见")
+    out.append("`知识图谱schema.md`。**本文件由 `../scripts/gen_knowledge_index.py` 生成，")
+    out.append("请勿手工编辑**——改了复用池就重跑该脚本。")
     out.append("")
     out.append("## 能力卡清单")
     out.append("")
@@ -193,8 +141,13 @@ def build_index(nodes: list[dict], edges: list[dict]) -> str:
             # 按相对当前文件所在目录解析，拼出不存在的位置。
             out.append(f"- [[{n['id']}|{n['title']}]] `{n['status']}`{desc}")
         out.append("")
-    return "\n".join(out)
-
+    out.append("## 看图")
+    out.append("")
+    out.append("```bash")
+    out.append("python scripts/render_graph.py --serve   # 出可交互图谱并打印访问地址")
+    out.append("```")
+    out.append("")
+    return chr(10).join(out)
 
 def main() -> int:
     root = repo_root()
@@ -205,14 +158,14 @@ def main() -> int:
 
     nodes, edges = load(pool_dir)
     if not nodes:
-        print("复用池里没有卡片，未生成索引", file=sys.stderr)
+        print("复用池里没有卡片，未生成 README", file=sys.stderr)
         return 1
 
-    index_path = os.path.join(root, "knowledge", "知识库索引.md")
-    with open(index_path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(build_index(nodes, edges))
+    readme_path = os.path.join(root, "knowledge", "README.md")
+    with open(readme_path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(build_readme(nodes, edges))
 
-    print(f"已生成 {index_path}")
+    print(f"已生成 {readme_path}")
     print(f"卡片 {len(nodes)} 张，边 {len(edges)} 条")
     return 0
 
