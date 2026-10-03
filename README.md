@@ -219,6 +219,18 @@ Harness 接收算法目录、数据文件及可选的验证参数。算法包以
 它读同一对 CSV，出一张自包含的可交互 HTML（同心圆布局，能拖、能按类目/状态筛、
 悬停看每条边的判断依据）。
 
+一次真实交互——输入「让我看看可视化的知识图谱」：
+
+![提示词](pic/graph/01-提示词.png)
+
+agent 的回答（返回本地地址 + 说明能看到什么）：
+
+![agent 回答](pic/graph/02-agent回答.png)
+
+浏览器里打开的图谱：
+
+![知识图谱页面](pic/graph/03-图谱页面.png)
+
 **卡片结构**（完整规范见 [`algorithm-coach/knowledge/知识图谱schema.md`](algorithm-coach/knowledge/知识图谱schema.md)）：
 
 - **结构侧**：`nodes.csv` 四列 `id,category,status,sources`（id 就是文件名）；
@@ -294,18 +306,6 @@ python scripts/render_graph.py --serve     # 出图 + 起本地服务，打印�
 ```
 
 然后回复里给出形如 `http://127.0.0.1:8765/graph.html` 的链接（只绑 127.0.0.1，不对外）。
-
-一次真实交互——输入「让我看看可视化的知识图谱」：
-
-![提示词](pic/graph/01-提示词.png)
-
-agent 的回答（返回本地地址 + 说明能看到什么）：
-
-![agent 回答](pic/graph/02-agent回答.png)
-
-浏览器里打开的图谱（同心圆布局、按类目着色、悬停看每条边的判断依据）：
-
-![知识图谱页面](pic/graph/03-图谱页面.png)
 
 ## 5. 环境配置和运行方法
 
