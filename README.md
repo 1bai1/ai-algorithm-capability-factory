@@ -334,6 +334,16 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 公开数据集，由 [Zhang et al., 2015](https://arxiv.org/abs/1509.01626) 提出；
 仓库里带这一份是为了让整条链路可以离线复现。
 
+数据就两列——`text` 是新闻正文、`label` 是四分类之一，每类挑一行（正文这里截断）：
+
+```csv
+text,label
+"Stewart gets deadline. NEW YORK Martha Stewart must report to prison in less than three weeks, a federal judge ruled…",Business
+"Afghans Say Trouble Inevitable But Won't Stop Vote.  KABUL (Reuters) - Afghan President Hamid Karzai vowed on Thursday…",World
+"USC turns halftime into a science. Halftime lockerrooms are sacrosanct. Only the privileged few are allowed entry…",Sports
+"'GM cocaine grown in Colombia'. Drug growers in Colombia are using genetically modified plants to dramatically…",SciTech
+```
+
 **知识库的素材**：8 份外部资料（4 篇 arXiv 综述、HuggingFace 与 scikit-learn 官方文档、
 一份 GitHub 精选清单、一篇 CSDN 综述），全部落在 `原始池`，逐份提炼进 `提炼池`，
 再抽成能力卡。付费材料不入仓库。
