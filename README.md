@@ -319,6 +319,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 
 ![Pi TUI 启动界面](pic/pi-tui-startup.png)
 
+**换台机器跑 agent**：`algorithm-coach/AGENTS.md` 的「运行环境」一节写的是作者本机的
+解释器路径；换机器时先把它替换成你自己的环境（依赖见仓库根 `requirements.txt`）。
+
 ## 6. 示例数据和测试任务说明
 
 **示例数据**：`examples/text_cls_demo/data/agnews_sample.csv` —— [AG News](https://huggingface.co/datasets/fancyzhx/ag_news) 四分类

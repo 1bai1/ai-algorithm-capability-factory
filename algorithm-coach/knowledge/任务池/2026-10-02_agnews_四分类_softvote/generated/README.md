@@ -29,10 +29,10 @@ Python 3.9+。本项目内置环境（可选）：`D:\environment\miniconda3\env
 
 ## 怎么跑
 
-**直接跑**（用本任务自带的示例数据集，路径可直接复制）：
+**直接跑**（用仓库里的示例数据集，路径可直接复制）：
 
 ```bash
-python run.py --data ../data/agnews_sample.csv --out predictions.csv
+python run.py --data ../../../../examples/text_cls_demo/data/agnews_sample.csv --out predictions.csv
 ```
 
 **换成你自己的数据**，只改 `--data`：

@@ -38,12 +38,6 @@ pip install pandas numpy scikit-learn
 python run.py --data ../../../../examples/text_cls_demo/data/agnews_sample.csv --out 预测.csv
 ```
 
-Windows 绝对路径写法（等价）：
-
-```bash
-python run.py --data D:/awork/akf/llmagent/code/algorithm-coach/examples/text_cls_demo/data/agnews_sample.csv --out 预测.csv
-```
-
 **换成你自己的数据**，只改 `--data`：
 
 ```bash
