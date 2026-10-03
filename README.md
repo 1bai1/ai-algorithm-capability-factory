@@ -329,9 +329,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 
 ## 6. 示例数据和测试任务说明
 
-**示例数据**：`examples/text_cls_demo/data/agnews_sample.csv` —— AG News 四分类
+**示例数据**：`examples/text_cls_demo/data/agnews_sample.csv` —— [AG News](https://huggingface.co/datasets/fancyzhx/ag_news) 四分类
 （World / Sports / Business / SciTech）的分层抽样，**4000 行、四类各 1000、均衡**。
-公开数据集，仓库里带这一份是为了让整条链路可以离线复现。
+公开数据集，由 [Zhang et al., 2015](https://arxiv.org/abs/1509.01626) 提出；
+仓库里带这一份是为了让整条链路可以离线复现。
 
 **知识库的素材**：8 份外部资料（4 篇 arXiv 综述、HuggingFace 与 scikit-learn 官方文档、
 一份 GitHub 精选清单、一篇 CSDN 综述），全部落在 `原始池`，逐份提炼进 `提炼池`，
