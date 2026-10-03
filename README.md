@@ -350,6 +350,10 @@ text,label
 
 **跑一遍这个示例**：
 
+先按第 5 节配好环境并启动 agent，然后输入这句提示词：
+
+> 做一个 AG News 四分类算法，数据 `examples/text_cls_demo/data/agnews_sample.csv`，交付到任务池并用 harness 验收，不要照抄 `examples/text_cls_demo`。
+
 ```bash
 # 验证（不需要 Node）
 cd algorithm-coach
