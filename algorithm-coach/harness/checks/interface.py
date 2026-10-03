@@ -1,17 +1,34 @@
 """接口规范检查：算法提交物能不能被 harness 正常调用。
 
-这一模块是**闸门**：任何一项不过，功能正确性与运行稳定性全部跳过——
-连不起来的东西不值得再往下查。
+本模块是**闸门**（`GATE = True`，`ORDER = 0`）——任何一项不过，后面的功能正确性、
+指标表现、运行稳定性**全部记"跳过"**。理由：连不起来的东西不值得再往下查。
+（"跳过"不等于"通过"：报告里那一栏是 `—`，不是 `✓`；只有真的跑过才可能通过。）
 
-检查项
-------
-- 提交物齐全   algorithm.py + manifest.json 都在
-- manifest 合法 字段类型正确（subject / label.column / label.classes / seed / budget）
-- 模块可导入   能 import，语法错误与导入错误在此拦下，带行号
-- 契约函数齐全 build_features / fit / predict 三个都有
-- 函数签名正确 能以契约规定的位置参数个数调用
-- 冒烟运行     小数据上真跑一遍 build_features → fit → predict
-- 交付物完整性 run.py 能独立跑、README 的示例命令指向真实数据、文档开头讲清是什么
+它检查什么（7 项，按 run() 的执行顺序）
+--------------------------------------
+1. `提交物齐全`   algorithm.py + manifest.json 在不在
+2. `manifest 合法` 字段类型对不对（subject / label.column / label.classes / seed / budget）
+3. `模块可导入`   能 import 吗——**语法错误与导入期报错在这里被拦下，并带出错行号**
+4. `契约函数齐全` build_features / fit / predict 三个都有吗
+5. `函数签名正确` 能以契约规定的位置参数个数调用吗（build_features 收 1 个、fit 收 1 个、predict 收 2 个）
+6. `冒烟运行`     拿小切片真跑一遍 build_features → fit → predict，看会不会当场崩
+7. `交付物完整性` run.py 能不能独立跑、README 的示例命令指向的文件在不在、
+                 文档开头有没有用一两句人话讲清"这是什么算法"
+
+为什么第 7 项也算"接口"
+----------------------
+交付物不只是给 harness 调用的零件，也是**要交给用户的东西**。用户不该为了跑它去拉本项目
+的源码——所以 run.py / README.md 属于契约的一部分，缺了就是没交付完。
+harness 在这里会**真起一个子进程跑 run.py**，而不是只检查文件存在。
+
+本模块**不需要主流程产物**（`NEEDS_CHAIN = False`）：它自己造小切片来跑，
+所以即使后面的模块被跳过，它也能独立完成判断。
+
+判据都来自哪里
+--------------
+这一模块的 7 项是**工程规范**（能不能连起来、交付得完不完整），不是某条算法能力，
+所以 `CHECKS` 里第三项（依据知识卡）统一是 `None`。判据本身写在 AGENTS.md 的
+「算法契约」与「交付层」两张表里。
 """
 from __future__ import annotations
 
@@ -60,25 +77,39 @@ MIN_USABLE_ROWS = 5
 
 
 def _result(cid: str, passed: bool, detail: str = "", location=None) -> CheckResult:
+    """造一条"已判定"的检查结果。名字与依据知识卡从 CHECK_INFO 查，不用手写。"""
     name, card = CHECK_INFO[cid]
     return CheckResult(id=cid, module=MODULE, name=name, passed=passed,
                        detail=detail, location=location, kb_card=card)
 
 
 def _all_skipped(reason: str, from_index: int = 0) -> list[CheckResult]:
-    """CHECKS 里从 from_index 起（含）的检查项，记一条跳过。"""
+    """CHECKS 里从 from_index 起（含）的检查项，记一条跳过。
+
+    用在"闸门早早挂掉"的场合：比如提交物不全，那后面的 manifest 检查、导入检查
+    都没意义，但报告里仍要出现这些条目（记 `—` 跳过 + 一句原因），
+    否则读者会以为"检查项少了"。
+    """
     return [CheckResult.skipped(cid, MODULE, name, reason)
             for cid, name, _ in CHECKS[from_index:]]
 
 
 def skipped_all(reason: str) -> list[CheckResult]:
+    """整个模块跳过（被 --modules 排除，或闸门在前面就挂了）。"""
     return _all_skipped(reason)
 
 
 def run(v: "Validator") -> list[CheckResult]:
+    """跑完 7 项接口检查，返回结果列表。
+
+    执行方式是**阶梯式的**：每一步过不了就立刻把剩下的记"跳过"并返回——
+    因为后一项都依赖前一项（文件都没有，谈不上去解析 manifest；导入不进来，
+    谈不上查函数签名）。这样报告里看到的"跳过"永远有明确原因。
+    """
     results: list[CheckResult] = []
 
-    # ---- 1. 提交物齐全
+    # ---- 1. 提交物齐全：algorithm.py 与 manifest.json 在不在
+    # 缺文件是最彻底的失败，后面 6 项全部跳过。
     algo_file = v.algo_dir / f"{v.module_name}.py"
     manifest_file = v.algo_dir / contract.MANIFEST_FILENAME
     missing = [f.name for f in (algo_file, manifest_file) if not f.is_file()]
@@ -88,7 +119,9 @@ def run(v: "Validator") -> list[CheckResult]:
         return results
     results.append(_result("interface.files", True, "algorithm.py 与 manifest.json 均在"))
 
-    # ---- 2. manifest 合法
+    # ---- 2. manifest 合法：字段类型、枚举取值对不对
+    # 注意这里会把解析结果**覆盖写回 v.manifest**——保证后续所有检查用的都是
+    # 磁盘上那份真 manifest，而不是谁在内存里改过的。
     manifest, errors = contract.parse_manifest(manifest_file)
     if errors:
         results.append(_result("interface.manifest", False, "；".join(errors)))
@@ -101,12 +134,15 @@ def run(v: "Validator") -> list[CheckResult]:
               f"seed={manifest.seed}, budget={manifest.budget_seconds}s")
     results.append(_result("interface.manifest", True, detail))
 
-    # ---- 3~5. 导入 + 函数 + 签名（同一个子进程里一次完成）
+    # ---- 3~5. 导入 + 函数齐全 + 签名正确
+    # 三件事在**同一个子进程里一次做完**（runner.run_import）：反复起进程既慢，
+    # 又可能撞上"第一次导入成功、第二次失败"这类环境噪声。
     payload = runner.run_import(v.algo_dir, v.module_name, budget=120)
     if not payload.ok:
         if payload.status == "timeout":
             results.append(_result("interface.import", False, "导入超时"))
         else:
+            # _tail 取 traceback 最后几行——最有信息量的那几行（错误类型 + 原因）
             tail = _tail(payload.error)
             results.append(_result("interface.import", False, tail, payload.location))
         results += _all_skipped("模块无法导入，跳过", from_index=3)
@@ -114,6 +150,7 @@ def run(v: "Validator") -> list[CheckResult]:
     v.import_payload = payload.value
     results.append(_result("interface.import", True, "模块导入成功"))
 
+    # 契约要求三个函数都存在。缺哪个报哪个，不一次性含糊说"函数不全"。
     missing_funcs = payload.value.get("missing", [])
     if missing_funcs:
         results.append(_result("interface.functions", False,
@@ -123,6 +160,8 @@ def run(v: "Validator") -> list[CheckResult]:
     results.append(_result("interface.functions", True,
                            "build_features / fit / predict 均已定义"))
 
+    # 签名检查：harness 会以固定个数的位置参数调用它们（build_features(df)、
+    # fit(train_df)、predict(model, test_df)），参数个数不对就连不起来。
     bad_arity = [(n, m["msg"]) for n, m in payload.value.get("functions", {}).items()
                  if not m["arity_ok"]]
     if bad_arity:
@@ -132,17 +171,33 @@ def run(v: "Validator") -> list[CheckResult]:
         return results
     results.append(_result("interface.signatures", True, "三个函数的参数个数符合契约"))
 
-    # ---- 6. 冒烟运行
+    # ---- 6. 冒烟运行：小切片上真跑一遍全链路
     results.append(_smoke(v))
 
-    # ---- 7. 交付物完整性
+    # ---- 7. 交付物完整性：run.py / README 能不能独立用起来
     results.append(_deliverables(v))
     return results
 
 
 def _smoke(v: "Validator") -> CheckResult:
+    """冒烟运行：拿一小段真实数据，真跑一遍 build_features → fit → predict。
+
+    为什么要有这一关：前面 5 项都是"静态检查"（文件在不在、签名对不对），
+    全过了也可能一跑就崩（比如 `fit` 里访问了不存在的列）。这一关是**第一次真执行**，
+    在花大代价跑全量之前先把"当场就崩"的挡掉。
+
+    为什么用"长度阶梯"（60 → 150 → 250 行）而不是固定一个长度：
+    有些算法对样本量有隐含下限（比如要求每类至少若干样本），60 行的切片可能取不到
+    可用行。这时不判它失败，而是换长一点的再试——**试到能跑通为止**，
+    只有"报错"和"跑完仍取不到可用行"才算失败。
+
+    判失败的两类情况：
+    - `build_features` / `fit` / `predict` **报错或超时** → 真问题，换长度也没用，直接判负
+    - 所有长度都试过仍凑不出可用行 → 判负，并提示"特征实现有问题或对样本量有隐含下限"
+    """
     last_problem = ""
     for rows in SMOKE_LADDER:
+        # 数据本身比这一档还短时不必再往上试（第一档除外，至少试一次）
         if rows > len(v.raw) and rows != SMOKE_LADDER[0]:
             break
         sub = v.raw.head(min(rows, len(v.raw))).reset_index(drop=True)
@@ -154,6 +209,8 @@ def _smoke(v: "Validator") -> CheckResult:
             return _result("interface.smoke", False,
                            f"build_features 报错: {_tail(feats.error)}", feats.location)
 
+        # 契约要求 build_features 返回 DataFrame，且必须保留标签列
+        # （fit 要靠它训练，harness 也要靠它核对）。
         frame = feats.value
         if not isinstance(frame, pd.DataFrame):
             return _result("interface.smoke", False,
@@ -162,12 +219,15 @@ def _smoke(v: "Validator") -> CheckResult:
             return _result("interface.smoke", False,
                            f"特征表缺少标签列 {contract.LABEL_COLUMN}")
 
+        # 挑"能用的行"：dropna 之后还要够跑（少于 MIN_USABLE_ROWS 就换长切片）
         usable = frame.dropna()
         if len(usable) < MIN_USABLE_ROWS:
             last_problem = (f"{len(sub)} 行切片里只有 {len(usable)} 行可用"
                             f"（特征还没成形）")
             continue
 
+        # 留最后几行当"测试集"：契约要求 predict 的返回长度等于测试集行数，
+        # 这里就能顺手验一次。测试集要剥掉标签列——模拟真实预测时拿不到答案。
         test_rows = min(SMOKE_TEST_ROWS, max(1, len(usable) // 3))
         train_df = usable.iloc[:-test_rows]
         test_df = usable.iloc[-test_rows:].drop(columns=[contract.LABEL_COLUMN])
@@ -195,6 +255,11 @@ def _smoke(v: "Validator") -> CheckResult:
 
 
 def _tail(text: str | None, lines: int = 6) -> str:
+    """取报错信息的最后几行——traceback 里最有用的部分（错误类型 + 原因）。
+
+    报告里只能放一行，所以把换行折成 `⏎`；完整 traceback 在报告 JSON 的
+    其它字段里也有（`error`），这里只求"一眼看到是什么错"。
+    """
     if not text:
         return "（无错误信息）"
     parts = [ln for ln in text.strip().splitlines() if ln.strip()]

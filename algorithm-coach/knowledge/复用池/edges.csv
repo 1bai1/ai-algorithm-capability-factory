@@ -1,8 +1,13 @@
 from_id,to_id,type,reason
+AGNews_词字符n-gram_ComplementNB,AGNews_词字符n-gram_NB_LogReg软投票,并列替代,同为该 4000 行采样集上的浅层路线，单模型 ComplementNB 与软投票集成可用同口径跨种子数字对照（0.8796 vs 0.8856 宏 F1）
 AGNews_词字符n-gram_ComplementNB,TF-IDF词项加权,实证证据,本卡用 sublinear_tf、min_df 加权的词 TF-IDF 并集跑到宏 F1 0.884，是该卡稀疏加权表示可用性的一次真实运行记录
 AGNews_词字符n-gram_ComplementNB,文本分类评测口径与可复现性,实证证据,本卡按该卡口径报告准确率与宏 F1、对照多数类与强参考基线、跨 5 个切分种子复核，是可复现评测的一次运行实例
 AGNews_词字符n-gram_ComplementNB,浅层文本分类_朴素贝叶斯与SVM,实证证据,"ComplementNB(alpha=0.3) 在 4000 行小样本、无 GPU 场景取得 0.884 宏 F1，为该卡""小数据浅层族占优""提供一条实证"
 AGNews_词字符n-gram_ComplementNB,词袋与N-gram文本表示,实证证据,词 1/2-gram ∪ 词内字符 3/5-gram 即本卡特征表示，该卡解释的 `char_wb` 抗词形变化在本卡有对应指标佐证
+AGNews_词字符n-gram_NB_LogReg软投票,TF-IDF词项加权,实证证据,本卡用 sublinear_tf 与 min_df 加权的词 1/2-gram TF-IDF、并以软投票集成跑到测试宏 F1 0.889，是该卡稀疏加权表示在集成配置下可用的一次真实运行记录
+AGNews_词字符n-gram_NB_LogReg软投票,文本分类评测口径与可复现性,实证证据,本卡按该卡口径报告准确率与宏 F1、对照多数类与 harness 参考基线、跨 5 个切分种子复核并记录反泄漏与确定性检查，是可复现评测的一次运行实例
+AGNews_词字符n-gram_NB_LogReg软投票,浅层文本分类_朴素贝叶斯与SVM,实证证据,本卡以 ComplementNB 与 LogisticRegression 软投票集成取得宏 F1 0.889，集成法同属该卡浅层族，为中小样本浅层路线补一条集成配置的实证
+AGNews_词字符n-gram_NB_LogReg软投票,词袋与N-gram文本表示,实证证据,本卡特征即词 1/2-gram ∪ 词内字符 3/5-gram 计数经 TF-IDF 加权，该卡解释的 n-gram 与 char_wb 抗词形变化在本卡有逐类 F1 与混淆矩阵佐证
 CNN文本分类,RNN文本分类,并列替代,同一条序列的两种建模方式：RNN 递推捕获序列依赖但不可并行，CNN 卷积可并行但长距离弱，综述建议做两者融合（BLSTM-2DCNN 即此路线）
 CNN文本分类,文本分类选型_数据规模与成本,依赖,"""可并行、长距离弱、加深收益有限""是选型卡判断长文本与吞吐约束的结构依据；长文本与高吞吐场景的排除/保留依据该卡的结构结论（可并行、长距离弱、加深收益有限）"
 CNN文本分类,注意力机制文本分类,并列替代,"综述指出 CNN/RNN 对分类错误""无法解释""，注意力正是为解决可解释性而引入的替代/增强路线"

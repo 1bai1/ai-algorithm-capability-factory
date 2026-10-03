@@ -1,0 +1,66 @@
+[
+  {
+    "kind": "nb0.1",
+    "accuracy": 0.89,
+    "macro_f1": 0.8891610235795911,
+    "train_accuracy": 0.9515625,
+    "gap": 0.061562499999999964,
+    "seconds": 1.53
+  },
+  {
+    "kind": "nb0.3",
+    "accuracy": 0.885,
+    "macro_f1": 0.8843686746993225,
+    "train_accuracy": 0.945625,
+    "gap": 0.06062500000000004,
+    "seconds": 1.8
+  },
+  {
+    "kind": "nb0.5",
+    "accuracy": 0.88,
+    "macro_f1": 0.8792749836789723,
+    "train_accuracy": 0.9425,
+    "gap": 0.0625,
+    "seconds": 2.26
+  },
+  {
+    "kind": "lr8",
+    "accuracy": 0.88,
+    "macro_f1": 0.8795896817540445,
+    "train_accuracy": 1.0,
+    "gap": 0.12,
+    "seconds": 4.03
+  },
+  {
+    "kind": "svc1",
+    "accuracy": 0.87375,
+    "macro_f1": 0.8731442126854624,
+    "train_accuracy": 0.9996875,
+    "gap": 0.12593749999999992,
+    "seconds": 2.44
+  },
+  {
+    "kind": "vote_nb1_lr1",
+    "accuracy": 0.89,
+    "macro_f1": 0.889409381092994,
+    "train_accuracy": 0.974375,
+    "gap": 0.08437499999999998,
+    "seconds": 4.08
+  },
+  {
+    "kind": "vote_nb2_lr1",
+    "accuracy": 0.89125,
+    "macro_f1": 0.8906714558061072,
+    "train_accuracy": 0.961875,
+    "gap": 0.07062500000000005,
+    "seconds": 4.37
+  },
+  {
+    "kind": "vote_nb1_lr2",
+    "accuracy": 0.89,
+    "macro_f1": 0.8895754147894122,
+    "train_accuracy": 0.99375,
+    "gap": 0.10375000000000001,
+    "seconds": 4.34
+  }
+]
