@@ -259,7 +259,7 @@ TF-IDF词项加权,02_高级特征工程,已验证,提炼池/线上博客/文本
 ## 4. Agent 工作流设计
 
 ```mermaid
-flowchart TB
+flowchart LR
     A[a 理解能力描述] --> B[b 检索相关能力]
     B --> C[c 规划实现方案]
     C --> D[d 生成可运行代码]
