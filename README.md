@@ -323,8 +323,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
   --tools read,powershell,edit,write,grep,find,ls,subagent
 ```
 
-验证、跑算法、自测三条命令围绕 `examples/text_cls_demo/` 示例，见第 6 节；
-它们不需要 Node，也不需要 LLM 凭据——没有 key 也能把确定性那半条链路跑通。
+启动后长这样——`[Context]` / `[Skills]` / `[Extensions]` 三块正是本项目加载的规则、技能与扩展：
+
+![Pi TUI 启动界面](pic/pi-tui-startup.png)
 
 ## 6. 示例数据和测试任务说明
 
