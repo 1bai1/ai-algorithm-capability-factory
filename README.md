@@ -304,7 +304,9 @@ $env:OPENCODE_API_KEY="<your-key>"      # bash: export OPENCODE_API_KEY=...
 
 ```powershell
 $env:OPENCODE_API_KEY = "<your-key>"
-Set-Location "D:\awork\akf\llmagent\code\algorithm-coach"    # ← 这步不能省
+
+# 在仓库根目录执行；这步不能省——agent 按当前目录读 AGENTS.md 与 .pi/
+Set-Location "algorithm-coach"
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File "..\pi-main\pi-test.ps1" `
