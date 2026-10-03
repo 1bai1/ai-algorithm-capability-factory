@@ -193,7 +193,7 @@ Harness 接收算法目录、数据文件及可选的验证参数。算法包以
 #### 2.6.2 Harness 命令行与图谱查看入口
 
 已有算法可通过 `python -m harness validate` 单独验证；知识图谱可通过
-`scripts/render_graph.py --serve` 在本地浏览器查看。两种入口的完整命令见第 5 节。
+`scripts/render_graph.py --serve` 在本地浏览器查看。两种入口的完整命令见第 4 节与第 6 节。
 当前未提供独立的 Web 管理界面。
 
 ## 3. 能力知识图谱 schema 和示例
@@ -310,22 +310,6 @@ cd pi-main && npm install --ignore-scripts
 $env:OPENCODE_API_KEY="<your-key>"      # bash: export OPENCODE_API_KEY=...
 ```
 
-**跑验证**（不需要 Node）：
-
-```bash
-cd algorithm-coach
-python -m harness validate examples/text_cls_demo/generated \
-    --data examples/text_cls_demo/data/agnews_sample.csv \
-    --out  examples/text_cls_demo/validation
-```
-
-**跑生成出来的算法**（用户视角，不需要 harness）：
-
-```bash
-cd examples/text_cls_demo/generated
-python run.py --data ../data/agnews_sample.csv --out 预测.csv
-```
-
 **启动 agent**：
 
 ```powershell
@@ -335,17 +319,12 @@ Set-Location "D:\awork\akf\llmagent\code\algorithm-coach"    # ← 这步不能�
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File "..\pi-main\pi-test.ps1" `
   --model opencode-go/deepseek-v4.1-flash `
-  --thinking max `
+  --thinking low `
   --tools read,powershell,edit,write,grep,find,ls,subagent
 ```
 
-**跑自测**：
-
-```bash
-cd algorithm-coach
-python -m unittest tests.test_harness_classification tests.test_knowledge_index
-python tests/test_validate_knowledge.py
-```
+验证、跑算法、自测三条命令围绕 `examples/text_cls_demo/` 示例，见第 6 节；
+它们不需要 Node，也不需要 LLM 凭据——没有 key 也能把确定性那半条链路跑通。
 
 ## 6. 示例数据和测试任务说明
 
@@ -356,6 +335,29 @@ python tests/test_validate_knowledge.py
 **知识库的素材**：8 份外部资料（4 篇 arXiv 综述、HuggingFace 与 scikit-learn 官方文档、
 一份 GitHub 精选清单、一篇 CSDN 综述），全部落在 `原始池`，逐份提炼进 `提炼池`，
 再抽成能力卡。付费材料不入仓库。
+
+**跑一遍这个示例**：
+
+```bash
+# 验证（不需要 Node）
+cd algorithm-coach
+python -m harness validate examples/text_cls_demo/generated \
+    --data examples/text_cls_demo/data/agnews_sample.csv \
+    --out  examples/text_cls_demo/validation
+```
+
+```bash
+# 跑生成出来的算法（用户视角，不需要 harness）
+cd examples/text_cls_demo/generated
+python run.py --data ../data/agnews_sample.csv --out 预测.csv
+```
+
+```bash
+# 自测
+cd algorithm-coach
+python -m unittest tests.test_harness_classification tests.test_knowledge_index
+python tests/test_validate_knowledge.py
+```
 
 **跑过的任务**（完整记录在 `knowledge/任务池/`）：
 
