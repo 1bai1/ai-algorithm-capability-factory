@@ -354,26 +354,20 @@ text,label
 
 > 做一个 AG News 四分类算法，数据 `examples/text_cls_demo/data/agnews_sample.csv`，交付到任务池并用 harness 验收，不要照抄 `examples/text_cls_demo`。
 
-```bash
-# 验证（不需要 Node）
-cd algorithm-coach
-python -m harness validate examples/text_cls_demo/generated \
-    --data examples/text_cls_demo/data/agnews_sample.csv \
-    --out  examples/text_cls_demo/validation
-```
+一次真实运行的六个片段（同一次运行，从上到下）：
 
-```bash
-# 跑生成出来的算法（用户视角，不需要 harness）
-cd examples/text_cls_demo/generated
-python run.py --data ../data/agnews_sample.csv --out 预测.csv
-```
-
-```bash
-# 自测
-cd algorithm-coach
-python -m unittest tests.test_harness_classification tests.test_knowledge_index
-python tests/test_validate_knowledge.py
-```
+1. 先读知识图谱的结构：`nodes.csv` 与 `edges.csv` 两张表，再按命中开卡
+   ![读复用池](pic/demo/01-读知识库复用池.png)
+2. 读命中的验证证据卡，了解这条任务上已有哪些真实数字
+   ![读证据卡](pic/demo/02-读知识库复用池1.png)
+3. 枚举图谱里的候选路线
+   ![候选路线](pic/demo/03-读知识库复用池2.png)
+4. 选型实验：写脚本对比哈希路线的若干配置，docstring 里写明依据哪几张卡
+   ![模型选型](pic/demo/04-agent自主进行模型选型.png)
+5. 统一验证：19 项检查一次通过
+   ![统一验证](pic/demo/05-统一验证.png)
+6. 结果回流：主 agent 把活委派给**子 agent**（知识管理员）——由它独立写证据卡与 5 条边、跑校验（26 节点 / 88 边 / 0 错误）
+   ![回流知识库](pic/demo/06-有效结果回流知识库.png)
 
 **跑过的任务**（完整记录在 `knowledge/任务池/`）：
 
